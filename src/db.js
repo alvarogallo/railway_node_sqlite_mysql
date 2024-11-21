@@ -1,7 +1,12 @@
+// db.js
 const mysql = require('mysql2/promise');
-//clave otra vez
-const dbConfig = {
-  host: process.env.DB_HOST || "autorack.proxy.rlwy.net",
+const sqlite3 = require('sqlite3').verbose();
+const { open } = require('sqlite');
+
+const CUAL_DATABASE = process.env.CUAL_DATABASE || 'SQLITE'; // MYSQL o SQLITE
+
+const mysqlConfig = {
+  host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT || "11702"),
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
@@ -12,19 +17,13 @@ const dbConfig = {
   connectTimeout: 20000
 };
 
-console.log('Configuración de la base de datos:');
-console.log('HOST:', dbConfig.host);
-console.log('PORT:', dbConfig.port);
-console.log('USER:', dbConfig.user);
-console.log('DATABASE:', dbConfig.database);
-console.log('PASSWORD:', dbConfig.password ? '[PRESENTE]' : '[NO PRESENTE]');
+let mysqlPool = null;
+let sqliteDb = null;
 
-let pool = null;
-
-async function initPool() {
+async function initMySQLPool() {
   try {
-    pool = mysql.createPool(dbConfig);
-    await pool.getConnection();
+    mysqlPool = mysql.createPool(mysqlConfig);
+    await mysqlPool.getConnection();
     console.log('✅ Conexión a MySQL exitosa');
   } catch (err) {
     console.error('❌ Error de conexión a MySQL:', err.message);
@@ -32,10 +31,41 @@ async function initPool() {
   }
 }
 
-module.exports = {
-  query: async (sql, params) => {
-    if (!pool) await initPool();
-    const [results] = await pool.execute(sql, params);
+async function initSQLite() {
+  try {
+    sqliteDb = await open({
+      filename: 'sqlite3.railway.internal',
+      driver: sqlite3.Database
+    });
+    await sqliteDb.get('SELECT 1');
+    console.log('✅ Conexión a SQLite exitosa');
+  } catch (err) {
+    console.error('❌ Error de conexión a SQLite:', err.message);
+    process.exit(1);
+  }
+}
+
+console.log('Usando base de datos:', CUAL_DATABASE);
+console.log('Configuración de la base de datos MySQL:');
+console.log('HOST:', mysqlConfig.host);
+console.log('PORT:', mysqlConfig.port);
+console.log('USER:', mysqlConfig.user);
+console.log('DATABASE:', mysqlConfig.database);
+console.log('PASSWORD:', mysqlConfig.password ? '[PRESENTE]' : '[NO PRESENTE]');
+
+async function query(sql, params) {
+  if (CUAL_DATABASE === 'MYSQL') {
+    if (!mysqlPool) await initMySQLPool();
+    const [results] = await mysqlPool.execute(sql, params);
+    return results;
+  } else {
+    if (!sqliteDb) await initSQLite();
+    const results = await sqliteDb.all(sql, params);
     return results;
   }
+}
+
+module.exports = {
+  query,
+  CUAL_DATABASE
 };
