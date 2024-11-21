@@ -1,0 +1,22 @@
+[
+  {
+    "canal": "bingo",
+    "token": "token_enviador_123",
+    "ip": "0.0.0.0"
+  },
+  {
+    "canal": "rifas",
+    "token": "Enviador_RV_001",
+    "ip": "0.0.0.0"
+  },
+  {
+    "canal": "ais_shipping",
+    "token": "envidor",
+    "ip": "0.0.0.0"
+  },
+  {
+    "canal": "Bingo_Automatico",
+    "token": "bingo_automatico",
+    "ip": "0.0.0.0"
+  }  
+]

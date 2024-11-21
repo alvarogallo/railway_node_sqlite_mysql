@@ -1,0 +1,20 @@
+[
+  {
+    "canal": "bingo",
+    "token": "oidor_2"
+  },
+  {
+    "canal": "rifas",
+    "token": "rifa_recibir"
+  },
+  {
+    "canal": "ais_shipping",
+    "token": "yo_escucho_ais",
+    "ip": "0.0.0.0"
+  },
+  {
+    "canal": "Bingo_Automatico",
+    "token": "bingo_automatico",
+    "ip": "0.0.0.0"
+  }  
+]

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Socket.IO</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .columns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .column {
+            flex: 1 1 calc(50% - 10px);
+            min-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Portal de Socket.IO</h1>
+    <p>Bienvenido al portal de Socket.IO. Aquí encontrarás instrucciones sobre cómo manejar los sockets en nuestra aplicación.</p>
+
+    <h2>Ejemplos de envío de mensajes</h2>
+    <div class="columns">
+        <div class="column">
+            <h3>Petición POST con JavaScript</h3>
+            <pre><code>
+fetch('https://tu-servidor.com/enviar-mensaje', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+        canal: 'any_channel',
+        token: 'any_token',
+        evento: 'new_order',
+        mensaje: {
+            id: '12345',
+            producto: 'Ejemplo',
+            cantidad: 1
+        }
+    }),
+})
+.then(response => response.json())
+.then(data => console.log('Respuesta:', data))
+.catch((error) => console.error('Error:', error));
+            </code></pre>
+        </div>
+        <div class="column">
+            <h3>Petición POST con PHP (file_get_contents)</h3>
+            <pre><code>
+&lt;?php
+$url = 'https://tu-servidor.com/enviar-mensaje';
+$data = array(
+    'canal' => 'any_channel',
+    'token' => 'any_token',
+    'evento' => 'new_order',
+    'mensaje' => array(
+        'id' => '12345',
+        'producto' => 'Ejemplo',
+        'cantidad' => 1
+    )
+);
+
+$options = array(
+    'http' => array(
+        'header'  => "Content-type: application/json\r\n",
+        'method'  => 'POST',
+        'content' => json_encode($data)
+    )
+);
+
+$context  = stream_context_create($options);
+$result = file_get_contents($url, false, $context);
+
+if ($result === FALSE) {
+    echo "Error al enviar el mensaje";
+} else {
+    var_dump($result);
+}
+?&gt;
+            </code></pre>
+        </div>
+        <div class="column">
+            <h3>Petición POST con PHP (cURL)</h3>
+            <pre><code>
+&lt;?php
+$url = 'https://tu-servidor.com/enviar-mensaje';
+$data = array(
+    'canal' => 'any_channel',
+    'token' => 'any_token',
+    'evento' => 'new_order',
+    'mensaje' => array(
+        'id' => '12345',
+        'producto' => 'Ejemplo',
+        'cantidad' => 1
+    )
+);
+
+$ch = curl_init($url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+    'Content-Type: application/json'
+));
+
+$response = curl_exec($ch);
+
+if (curl_errno($ch)) {
+    echo 'Error cURL: ' . curl_error($ch);
+} else {
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    echo "Código de respuesta HTTP: " . $httpCode . "\n";
+    echo "Respuesta: " . $response;
+}
+
+curl_close($ch);
+?&gt;
+            </code></pre>
+        </div>
+    </div>
+
+    <h2>Ejemplos de escucha de eventos</h2>
+    <div class="columns">
+        <div class="column">
+            <h3>Escuchar eventos con JavaScript</h3>
+            <pre><code>
+const socket = io('https://tu-servidor.com');
+
+socket.emit('unirseCanal', { 
+    canal: 'any_channel', 
+    token: 'any_token' 
+});
+
+socket.onAny((eventName, ...args) => {
+    console.log(`Evento recibido: ${eventName}`);
+    console.log('Datos:', args);
+});
+
+socket.on('new_order', (data) => {
+    console.log('Nueva orden recibida:', data);
+});
+
+socket.on('update_order', (data) => {
+    console.log('Actualización de orden:', data);
+});
+            </code></pre>
+        </div>
+        <div class="column">
+            <h3>Escuchar eventos con Flutter</h3>
+            <pre><code>
+import 'package:socket_io_client/socket_io_client.dart' as IO;
+
+void main() {
+  // Configurar la conexión Socket.IO
+  IO.Socket socket = IO.io('https://tu-servidor.com', &lt;String, dynamic&gt;{
+    'transports': ['websocket'],
+    'autoConnect': false,
+  });
+
+  // Conectar al servidor
+  socket.connect();
+
+  // Unirse a un canal
+  socket.emit('unirseCanal', {
+    'canal': 'any_channel',
+    'token': 'any_token'
+  });
+
+  // Escuchar todos los eventos
+  socket.onAny((event, data) {
+    print('Evento recibido: $event');
+    print('Datos: $data');
+  });
+
+  // Escuchar eventos específicos
+  socket.on('new_order', (data) {
+    print('Nueva orden recibida: $data');
+  });
+
+  socket.on('update_order', (data) {
+    print('Actualización de orden: $data');
+  });
+
+  // Manejar errores de conexión
+  socket.onError((error) {
+    print('Error de conexión: $error');
+  });
+
+  // Manejar desconexión
+  socket.onDisconnect((_) {
+    print('Desconectado del servidor');
+  });
+}
+            </code></pre>
+        </div>
+    </div>
+
+    <p>Recuerda reemplazar 'https://tu-servidor.com' con la URL específica de tu aplicación.</p>
+</body>
+</html>

@@ -1,0 +1,56 @@
+# Dependencias
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Archivos de entorno
+.env
+.env.local
+.env.*.local
+
+# Archivos de registro
+logs
+*.log
+
+# Directorios de tiempo de ejecución
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Directorio para instrumentar libs generadas por jscoverage/JSCover
+lib-cov
+
+# Directorio de cobertura utilizado por herramientas como istanbul
+coverage
+*.lcov
+
+# Salida de 'npm pack'
+*.tgz
+
+# Archivos temporales
+.tmp
+.temp
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de IDE/editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-workspace
+
+# Archivos de compilación
+dist/
+build/
+
+# Archivos de caché
+.cache
+.parcel-cache
+
+# Otros
+*.bak
+*.orig
