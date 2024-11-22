@@ -62,9 +62,11 @@ async function query(sql, params) {
   }
 }
 
-async function setupTables() {
-  const dropBingosSql = 'DROP TABLE IF EXISTS bingo_bingos;';
-  const dropParamsSql = 'DROP TABLE IF EXISTS bingo_parametros;';
+//async function setupTables() {
+  //no las esta borrando
+
+  // const dropBingosSql = 'DROP TABLE IF EXISTS bingo_bingos;';
+  // const dropParamsSql = 'DROP TABLE IF EXISTS bingo_parametros;';
   
   // const createBingosSql = `
   //     CREATE TABLE bingo_bingos (
@@ -85,24 +87,24 @@ async function setupTables() {
   //     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   // `;
 
-  try {
-      console.log('Eliminando tablas existentes...');
-      await query(dropBingosSql);
-      await query(dropParamsSql);
+//   try {
+//       console.log('Eliminando tablas existentes...');
+//       await query(dropBingosSql);
+//       await query(dropParamsSql);
 
-      console.log('Creando nuevas tablas...');
-      await query(createBingosSql);
-      await query(createParamsSql);
+//       console.log('Creando nuevas tablas...');
+//       await query(createBingosSql);
+//       await query(createParamsSql);
 
-      console.log('✅ Tablas creadas exitosamente');
-  } catch (error) {
-      console.error('❌ Error al configurar tablas:', error);
-      throw error;
-  }
-}
+//       console.log('✅ Tablas creadas exitosamente');
+//   } catch (error) {
+//       console.error('❌ Error al configurar tablas:', error);
+//       throw error;
+//   }
+// }
 
 module.exports = {
   query,
   CUAL_DATABASE,
-  setupTables
+  // setupTables
 };
