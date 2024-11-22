@@ -57,31 +57,18 @@ app.use(express.json());
 // });
 
 // Ruta de diagnóstico
-app.get('/admin/diagnostico', async (req, res) => {
-  try {
-    // Verificar sesión actual
-    const sessionInfo = req.session ? {
-      hasSession: true,
-      adminSession: req.session.admin || null
-    } : {
-      hasSession: false,
-      adminSession: null
-    };
-
-    // Verificar configuración de la base de datos
-    const dbConfig = {
-      host: db.CUAL_DATABASE,
-      hasPassword: !!process.env.DB_PASSWORD
-    };
-
-    res.json({
-      sessionInfo,
-      dbConfig,
-      nodeEnv: process.env.NODE_ENV || 'development'
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+app.get('/admin/diagnostico', (req, res) => {
+  res.json({
+      sessionInfo: {
+          hasSession: !!req.session,
+          adminSession: req.session?.admin || null,
+          sessionID: req.session?.id,
+          cookie: req.session?.cookie
+      },
+      headers: {
+          cookie: req.headers.cookie
+      }
+  });
 });
 
 app.get('/admin/check-user', async (req, res) => {
@@ -219,8 +206,8 @@ app.post('/admin/login', async (req, res) => {
 
 // Verificar que la ruta del dashboard existe y está correcta
 app.get('/admin/dashboard', authMiddleware, (req, res) => {
-  console.log('Accediendo al dashboard. Sesión:', req.session.admin);
-  res.sendFile(path.join(__dirname, 'public', 'admin-dashboard.html'));
+  console.log('Accediendo al dashboard, sesión:', req.session);
+  res.sendFile(path.join(__dirname, '../public', 'admin-dashboard.html'));
 });
 
 app.get('/admin/dashboard', authMiddleware, (req, res) => {
@@ -248,8 +235,13 @@ app.get('/api/admin/canales', authMiddleware, async (req, res) => {
 });
 
 app.post('/admin/logout', (req, res) => {
-  req.session.destroy();
-  res.json({ redirect: '/admin/login' });
+  req.session.destroy((err) => {
+      if (err) {
+          console.error('Error al cerrar sesión:', err);
+          return res.status(500).json({ error: 'Error al cerrar sesión' });
+      }
+      res.json({ success: true, redirect: '/admin/login' });
+  });
 });
 
 async function loadData() {
