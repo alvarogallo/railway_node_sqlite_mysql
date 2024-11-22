@@ -1,12 +1,13 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
+// Configuración de conexión usando las variables directamente
 const mysqlConfig = {
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || "3306"),
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  host: process.env.RAILWAY_PRIVATE_DOMAIN || 'localhost',
+  port: parseInt(process.env.MYSQLPORT || "3306"),
+  user: 'root',
+  password: process.env.MYSQL_ROOT_PASSWORD,
+  database: 'railway',
   ssl: {
     rejectUnauthorized: false
   },
@@ -16,17 +17,23 @@ const mysqlConfig = {
 async function testConnection() {
   let connection;
   
-  console.log('Configuración de conexión:', {
+  // Mostrar la configuración (sin mostrar la contraseña por seguridad)
+  console.log('Intentando conectar con:', {
     host: mysqlConfig.host,
     port: mysqlConfig.port,
     user: mysqlConfig.user,
-    database: mysqlConfig.database
+    database: mysqlConfig.database,
+    env_vars_present: {
+      RAILWAY_PRIVATE_DOMAIN: !!process.env.RAILWAY_PRIVATE_DOMAIN,
+      MYSQL_ROOT_PASSWORD: !!process.env.MYSQL_ROOT_PASSWORD,
+      MYSQLPORT: !!process.env.MYSQLPORT
+    }
   });
 
   try {
     // Intentar crear la conexión
     connection = await mysql.createConnection(mysqlConfig);
-    console.log('Conexión exitosa a la base de datos');
+    console.log('¡Conexión exitosa a la base de datos!');
 
     // Probar una consulta simple
     const [rows] = await connection.query('SELECT 1 + 1 as result');
