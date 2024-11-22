@@ -15,6 +15,46 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const bcrypt = require('bcryptjs');
+
+app.post('/admin/set-password', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Verificar que se proporcionaron email y password
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email y password son requeridos' });
+    }
+
+    // Verificar que el usuario existe
+    const [existingUser] = await db.query(
+      'SELECT * FROM users WHERE email = ?', 
+      [email]
+    );
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Generar hash de la contraseña
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Actualizar la contraseña del usuario
+    await db.query(
+      'UPDATE users SET password = ? WHERE email = ?',
+      [hashedPassword, email]
+    );
+
+    res.json({ mensaje: 'Contraseña actualizada exitosamente' });
+
+  } catch (error) {
+    console.error('Error al actualizar contraseña:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] }
