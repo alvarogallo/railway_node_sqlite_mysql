@@ -3,7 +3,7 @@ const mysql = require('mysql2/promise');
 const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 
-const CUAL_DATABASE = process.env.CUAL_DATABASE || 'SQLITE'; // MYSQL o SQLITE
+const CUAL_DATABASE = process.env.CUAL_DATABASE || 'MYSQL'; // MYSQL o SQLITE
 
 const mysqlConfig = {
   host: "mysql.railway.internal",

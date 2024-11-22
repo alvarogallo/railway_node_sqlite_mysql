@@ -5,6 +5,9 @@ const cors = require('cors');
 const path = require('path');
 const db = require('./db');
 require('dotenv').config();
+const session = require('express-session');
+const bcrypt = require('bcryptjs');
+const authMiddleware = require('../middleware/authMiddleware');
 
 
 
@@ -21,6 +24,75 @@ const PORT = process.env.PORT || 3000;
 let listeners = [];
 let senders = [];
 const activeChannels = new Map();
+
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: process.env.NODE_ENV === 'production' }
+}));
+
+// Rutas de administración
+app.get('/admin/login', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public', 'admin-login.html'));
+});
+
+app.post('/admin/login', async (req, res) => {
+  const { email, password } = req.body;
+  
+  try {
+    const [user] = await db.query('SELECT * FROM users WHERE email = ? AND role = "ADMIN"', [email]);
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+
+    req.session.admin = {
+      id: user.id,
+      email: user.email
+    };
+
+    res.json({ redirect: '/admin/dashboard' });
+  } catch (error) {
+    console.error('Error en login:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+app.get('/admin/dashboard', authMiddleware, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public', 'admin-dashboard.html'));
+});
+
+app.get('/api/admin/canales', authMiddleware, async (req, res) => {
+  try {
+    const canales = await db.query(`
+      SELECT 
+        c.*, 
+        COUNT(DISTINCT t.id) as total_tokens,
+        COUNT(DISTINCT CASE WHEN t.permisos = 'emisor' THEN t.id END) as emisores,
+        COUNT(DISTINCT CASE WHEN t.permisos = 'receptor' THEN t.id END) as receptores
+      FROM socket_io_canales c
+      LEFT JOIN socket_io_tokens t ON c.id = t.id_canal
+      GROUP BY c.id
+      ORDER BY c.created_at DESC
+    `);
+    res.json(canales);
+  } catch (error) {
+    console.error('Error al obtener canales:', error);
+    res.status(500).json({ error: 'Error al obtener canales' });
+  }
+});
+
+app.post('/admin/logout', (req, res) => {
+  req.session.destroy();
+  res.json({ redirect: '/admin/login' });
+});
 
 async function loadData() {
   try {
