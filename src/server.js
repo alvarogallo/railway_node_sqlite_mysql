@@ -9,11 +9,20 @@ require('dotenv').config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static('public'));
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] }
 });
+
+// Configuración básica de sesión
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'socket-io-secret-123',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false }
+}));
 
 const authMiddleware = (req, res, next) => {
   if (!req.session || !req.session.userId) {
@@ -31,28 +40,52 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
+  console.log('Intento de login - Body:', req.body);
+  
   try {
       const { email, password } = req.body;
-      
-      const [user] = await db.query(
-          'SELECT * FROM users WHERE email = ?', 
-          [email]
-      );
 
-      if (!user || !await bcrypt.compare(password, user.password)) {
+      if (!email || !password) {
+          console.log('Faltan credenciales');
+          return res.status(400).json({ error: 'Email y contraseña son requeridos' });
+      }
+
+      console.log('Buscando usuario con email:', email);
+      const [user] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+
+      console.log('Usuario encontrado:', !!user);
+      
+      if (!user) {
           return res.status(401).json({ error: 'Credenciales inválidas' });
       }
 
+      // En desarrollo, imprimir la contraseña hasheada para verificación
+      console.log('Password hash en DB:', user.password);
+
+      const validPassword = password === user.password; // Comparación simple temporal
+      console.log('Password válido:', validPassword);
+
+      if (!validPassword) {
+          return res.status(401).json({ error: 'Credenciales inválidas' });
+      }
+
+      // Crear sesión
       req.session.userId = user.id;
       req.session.userEmail = user.email;
+      console.log('Sesión creada:', req.session);
 
       res.json({ success: true, redirect: '/logs' });
+
   } catch (error) {
-      console.error('Error en login:', error);
-      res.status(500).json({ error: 'Error interno del servidor' });
+      console.error('Error detallado:', error);
+      res.status(500).json({ 
+          error: 'Error interno del servidor',
+          details: error.message
+      });
   }
 });
 
+// Ruta de logout
 app.get('/logout', (req, res) => {
   req.session.destroy();
   res.redirect('/login');
