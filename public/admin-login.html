@@ -12,8 +12,9 @@
             <div class="col-md-6 col-lg-4">
                 <div class="card shadow">
                     <div class="card-body">
-                        <h3 class="card-title text-center mb-4">Admin Login</h3>
+                        <h3 class="card-title text-center mb-4">Admin Login...</h3>
                         <div id="errorAlert" class="alert alert-danger d-none"></div>
+                        <div id="debugInfo" class="alert alert-info d-none"></div>
                         <form id="loginForm">
                             <div class="mb-3">
                                 <label for="email" class="form-label">Email</label>
@@ -23,7 +24,7 @@
                                 <label for="password" class="form-label">Contraseña</label>
                                 <input type="password" class="form-control" id="password" required>
                             </div>
-                            <div class="d-grid">
+                            <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-primary">Ingresar</button>
                             </div>
                         </form>
@@ -35,7 +36,18 @@
 
     <script>
         const errorAlert = document.getElementById('errorAlert');
+        const debugInfo = document.getElementById('debugInfo');
         const loginForm = document.getElementById('loginForm');
+
+        function showError(message) {
+            errorAlert.textContent = message;
+            errorAlert.classList.remove('d-none');
+        }
+
+        function showDebug(message) {
+            debugInfo.textContent = message;
+            debugInfo.classList.remove('d-none');
+        }
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -43,10 +55,13 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
-            // Ocultar error anterior
+            // Limpiar mensajes anteriores
             errorAlert.classList.add('d-none');
+            debugInfo.classList.add('d-none');
             
             try {
+                showDebug('Enviando solicitud de login...');
+                
                 const response = await fetch('/admin/login', {
                     method: 'POST',
                     headers: {
@@ -55,18 +70,22 @@
                     body: JSON.stringify({ email, password })
                 });
 
+                showDebug('Respuesta recibida. Status: ' + response.status);
+
                 const data = await response.json();
+                console.log('Respuesta completa:', data);
                 
                 if (data.error) {
-                    errorAlert.textContent = data.error;
-                    errorAlert.classList.remove('d-none');
+                    showError(data.error);
+                    showDebug('Error detallado: ' + JSON.stringify(data));
                 } else if (data.redirect) {
+                    showDebug('Redirigiendo a: ' + data.redirect);
                     window.location.href = data.redirect;
                 }
             } catch (error) {
-                errorAlert.textContent = 'Error al intentar iniciar sesión';
-                errorAlert.classList.remove('d-none');
-                console.error('Error:', error);
+                showError('Error al intentar iniciar sesión');
+                showDebug('Error técnico: ' + error.message);
+                console.error('Error completo:', error);
             }
         });
     </script>

@@ -56,6 +56,34 @@ app.use(express.json());
 //   }
 // });
 
+// Ruta de diagnóstico
+app.get('/admin/diagnostico', async (req, res) => {
+  try {
+    // Verificar sesión actual
+    const sessionInfo = req.session ? {
+      hasSession: true,
+      adminSession: req.session.admin || null
+    } : {
+      hasSession: false,
+      adminSession: null
+    };
+
+    // Verificar configuración de la base de datos
+    const dbConfig = {
+      host: db.CUAL_DATABASE,
+      hasPassword: !!process.env.DB_PASSWORD
+    };
+
+    res.json({
+      sessionInfo,
+      dbConfig,
+      nodeEnv: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/admin/check-user', async (req, res) => {
   try {
     const [user] = await db.query(
