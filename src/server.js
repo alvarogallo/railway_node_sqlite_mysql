@@ -6,7 +6,7 @@ const mysqlConfig = {
   host: "mysql.railway.internal",
   port: "3306",
   user: 'root',
-  password: process.env.MYSQL_ROOT_PASSWORD,
+  password: process.env.DB_PASSWORD,,
   database: 'railway',
   connectTimeout: 10000
 };
