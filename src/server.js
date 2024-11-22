@@ -15,47 +15,68 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get('/admin/set-password', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public', 'set-password.html'));
-});
+// app.get('/admin/set-password', (req, res) => {
+//   res.sendFile(path.join(__dirname, '../public', 'set-password.html'));
+// });
 
-app.post('/admin/set-password', async (req, res) => {
-  try {
-    const { email, password } = req.body;
+// app.post('/admin/set-password', async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
     
-    // Verificar que se proporcionaron email y password
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email y password son requeridos' });
-    }
+//     // Verificar que se proporcionaron email y password
+//     if (!email || !password) {
+//       return res.status(400).json({ error: 'Email y password son requeridos' });
+//     }
 
-    // Verificar que el usuario existe
-    const [existingUser] = await db.query(
-      'SELECT * FROM users WHERE email = ?', 
-      [email]
+//     // Verificar que el usuario existe
+//     const [existingUser] = await db.query(
+//       'SELECT * FROM users WHERE email = ?', 
+//       [email]
+//     );
+
+//     if (!existingUser) {
+//       return res.status(404).json({ error: 'Usuario no encontrado' });
+//     }
+
+//     // Generar hash de la contraseña
+//     const salt = await bcrypt.genSalt(10);
+//     const hashedPassword = await bcrypt.hash(password, salt);
+
+//     // Actualizar la contraseña del usuario
+//     await db.query(
+//       'UPDATE users SET password = ? WHERE email = ?',
+//       [hashedPassword, email]
+//     );
+
+//     res.json({ mensaje: 'Contraseña actualizada exitosamente' });
+
+//   } catch (error) {
+//     console.error('Error al actualizar contraseña:', error);
+//     res.status(500).json({ error: 'Error interno del servidor' });
+//   }
+// });
+
+app.get('/admin/check-user', async (req, res) => {
+  try {
+    const [user] = await db.query(
+      'SELECT id, email, role, password FROM users WHERE email = ?', 
+      ['alvarogallo@hotmail.com'] // Reemplaza con tu email
     );
 
-    if (!existingUser) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (!user) {
+      return res.json({ error: 'Usuario no encontrado' });
     }
 
-    // Generar hash de la contraseña
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Actualizar la contraseña del usuario
-    await db.query(
-      'UPDATE users SET password = ? WHERE email = ?',
-      [hashedPassword, email]
-    );
-
-    res.json({ mensaje: 'Contraseña actualizada exitosamente' });
-
+    res.json({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      hasPassword: !!user.password
+    });
   } catch (error) {
-    console.error('Error al actualizar contraseña:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    res.status(500).json({ error: error.message });
   }
 });
-
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -83,27 +104,50 @@ app.get('/admin/login', (req, res) => {
 app.post('/admin/login', async (req, res) => {
   const { email, password } = req.body;
   
+  console.log('Intento de login:', { email });
+  
   try {
-    const [user] = await db.query('SELECT * FROM users WHERE email = ? AND role = "ADMIN"', [email]);
+    // Buscar usuario
+    const [user] = await db.query(
+      'SELECT * FROM users WHERE email = ?', 
+      [email]
+    );
+    
+    console.log('Usuario encontrado:', user ? 'Sí' : 'No');
     
     if (!user) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
+      return res.status(401).json({ error: 'Credenciales inválidas (usuario no encontrado)' });
     }
 
+    console.log('Role del usuario:', user.role);
+    
+    // Verificar que sea admin
+    if (user.role !== 'ADMIN') {
+      return res.status(401).json({ error: 'No tienes permisos de administrador' });
+    }
+
+    // Verificar contraseña
     const validPassword = await bcrypt.compare(password, user.password);
+    console.log('Contraseña válida:', validPassword);
+    
     if (!validPassword) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
+      return res.status(401).json({ error: 'Credenciales inválidas (contraseña incorrecta)' });
     }
 
+    // Crear sesión
     req.session.admin = {
       id: user.id,
-      email: user.email
+      email: user.email,
+      role: user.role
     };
 
+    console.log('Sesión creada:', req.session.admin);
+
     res.json({ redirect: '/admin/dashboard' });
+    
   } catch (error) {
     console.error('Error en login:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
   }
 });
 

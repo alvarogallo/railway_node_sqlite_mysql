@@ -13,6 +13,7 @@
                 <div class="card shadow">
                     <div class="card-body">
                         <h3 class="card-title text-center mb-4">Admin Login</h3>
+                        <div id="errorAlert" class="alert alert-danger d-none"></div>
                         <form id="loginForm">
                             <div class="mb-3">
                                 <label for="email" class="form-label">Email</label>
@@ -33,12 +34,18 @@
     </div>
 
     <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        const errorAlert = document.getElementById('errorAlert');
+        const loginForm = document.getElementById('loginForm');
+
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
+            // Ocultar error anterior
+            errorAlert.classList.add('d-none');
+            
             try {
                 const response = await fetch('/admin/login', {
                     method: 'POST',
@@ -51,12 +58,15 @@
                 const data = await response.json();
                 
                 if (data.error) {
-                    alert(data.error);
+                    errorAlert.textContent = data.error;
+                    errorAlert.classList.remove('d-none');
                 } else if (data.redirect) {
                     window.location.href = data.redirect;
                 }
             } catch (error) {
-                alert('Error al intentar iniciar sesión');
+                errorAlert.textContent = 'Error al intentar iniciar sesión';
+                errorAlert.classList.remove('d-none');
+                console.error('Error:', error);
             }
         });
     </script>
