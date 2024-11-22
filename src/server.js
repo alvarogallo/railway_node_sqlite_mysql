@@ -15,33 +15,8 @@ const queries = [
   "SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO'",
   "SET time_zone = '+00:00'",
   
-  `CREATE TABLE IF NOT EXISTS socket_io_administradores (
-    id int(11) NOT NULL AUTO_INCREMENT,
-    email varchar(64) NOT NULL,
-    role varchar(8) NOT NULL DEFAULT 'ADMIN',
-    created_at datetime NOT NULL DEFAULT current_timestamp(),
-    PRIMARY KEY (id)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
 
-  `CREATE TABLE IF NOT EXISTS socket_io_canales (
-    id int(11) NOT NULL AUTO_INCREMENT,
-    vida int(8) NOT NULL DEFAULT 1,
-    nombre varchar(50) NOT NULL,
-    descripcion text DEFAULT NULL,
-    created_at timestamp NOT NULL DEFAULT current_timestamp(),
-    PRIMARY KEY (id),
-    UNIQUE KEY nombre (nombre)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
 
-  `CREATE TABLE IF NOT EXISTS socket_io_historial (
-    id int(11) NOT NULL AUTO_INCREMENT,
-    ip_sender varchar(64) NOT NULL,
-    canal varchar(50) DEFAULT NULL,
-    evento varchar(255) DEFAULT NULL,
-    mensaje varchar(255) NOT NULL,
-    timestamp datetime NOT NULL DEFAULT current_timestamp(),
-    PRIMARY KEY (id)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
 
   `CREATE TABLE IF NOT EXISTS socket_io_ips_lista_blanca (
     id int(11) NOT NULL AUTO_INCREMENT,
