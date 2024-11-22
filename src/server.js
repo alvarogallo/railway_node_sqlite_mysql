@@ -3,15 +3,12 @@ require('dotenv').config();
 
 // Configuración de conexión usando las variables directamente
 const mysqlConfig = {
-  host: process.env.RAILWAY_PRIVATE_DOMAIN || 'localhost',
-  port: parseInt(process.env.MYSQLPORT || "3306"),
+  host: "mysql.railway.internal",
+  port: "3306",
   user: 'root',
   password: process.env.MYSQL_ROOT_PASSWORD,
   database: 'railway',
-  ssl: {
-    rejectUnauthorized: false
-  },
-  connectTimeout: 20000
+  connectTimeout: 10000
 };
 
 async function testConnection() {
