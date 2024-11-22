@@ -15,7 +15,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-
+app.get('/admin/set-password', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public', 'set-password.html'));
+});
 
 app.post('/admin/set-password', async (req, res) => {
   try {
