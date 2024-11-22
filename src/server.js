@@ -1,222 +1,119 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const cors = require('cors');
-const path = require('path');
-const db = require('./db');
+const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+const mysqlConfig = {
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT || "11702"),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  connectTimeout: 20000
+};
 
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] }
-});
+const createTablesQuery = `
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
 
-const PORT = process.env.PORT || 3000;
-let listeners = [];
-let senders = [];
-const activeChannels = new Map();
+CREATE TABLE IF NOT EXISTS \`socket_io_administradores\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`email\` varchar(64) NOT NULL,
+  \`role\` varchar(8) NOT NULL DEFAULT 'ADMIN',
+  \`created_at\` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (\`id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-async function loadData() {
+CREATE TABLE IF NOT EXISTS \`socket_io_canales\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`vida\` int(8) NOT NULL DEFAULT 1,
+  \`nombre\` varchar(50) NOT NULL,
+  \`descripcion\` text DEFAULT NULL,
+  \`created_at\` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (\`id\`),
+  UNIQUE KEY \`nombre\` (\`nombre\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS \`socket_io_historial\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`ip_sender\` varchar(64) NOT NULL,
+  \`canal\` varchar(50) DEFAULT NULL,
+  \`evento\` varchar(255) DEFAULT NULL,
+  \`mensaje\` varchar(255) NOT NULL,
+  \`timestamp\` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (\`id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS \`socket_io_ips_lista_blanca\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`ip\` varchar(64) NOT NULL,
+  \`uso\` text NOT NULL DEFAULT 'RW',
+  \`created_at\` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (\`id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS \`socket_io_ip_rechazadas\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`ip\` varchar(45) NOT NULL,
+  \`fecha_rechazo\` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (\`id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS \`socket_io_log\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`accion\` varchar(32) NOT NULL,
+  \`fecha\` date DEFAULT NULL,
+  \`created_at\` timestamp NOT NULL DEFAULT current_timestamp(),
+  \`updated_at\` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (\`id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS \`socket_io_tokens\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`canal_id\` int(11) NOT NULL,
+  \`token\` varchar(64) NOT NULL,
+  \`tipo\` enum('enviador','oidor') NOT NULL,
+  \`created_at\` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (\`id\`),
+  UNIQUE KEY \`token\` (\`token\`),
+  KEY \`canal_id\` (\`canal_id\`),
+  CONSTRAINT \`socket_io_tokens_ibfk_1\` FOREIGN KEY (\`canal_id\`) REFERENCES \`socket_io_canales\` (\`id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+COMMIT;
+`;
+
+async function initializeDatabase() {
+  let connection;
   try {
-    // Cargar receptores y emisores desde la tabla tokens
-    const listenersResult = await db.query(
-      'SELECT t.token, c.nombre as canal FROM socket_io_tokens t JOIN socket_io_canales c ON t.id_canal = c.id WHERE t.permisos = "receptor"'
-    );
-    const sendersResult = await db.query(
-      'SELECT t.token, c.nombre as canal, iv.ip FROM socket_io_tokens t JOIN socket_io_canales c ON t.id_canal = c.id LEFT JOIN socket_io_ips_validas iv ON t.id_canal = iv.id_canal WHERE t.permisos = "emisor"'
-    );
-    
-    listeners = listenersResult || [];
-    senders = sendersResult || [];
-    
-    console.log('Datos cargados desde MySQL:', {
-      listeners: listeners.length,
-      senders: senders.length
-    });
+    // Crear conexión
+    connection = await mysql.createConnection(mysqlConfig);
+    console.log('Conexión establecida con éxito');
+
+    // Ejecutar queries
+    await connection.query(createTablesQuery);
+    console.log('Tablas creadas exitosamente');
+
   } catch (error) {
-    console.error('Error cargando datos de MySQL:', error);
+    console.error('Error al inicializar la base de datos:', error);
+    throw error;
+  } finally {
+    if (connection) {
+      await connection.end();
+      console.log('Conexión cerrada');
+    }
   }
 }
 
-async function validarListener(canal, token) {
-  try {
-    const [result] = await db.query(
-      'SELECT t.id FROM socket_io_tokens t JOIN socket_io_canales c ON t.id_canal = c.id WHERE c.nombre = ? AND t.token = ? AND t.permisos = "receptor"',
-      [canal, token]
-    );
-    return result ? [null, 'Listener válido.'] : ['listener_invalido', 'Canal o token no válidos.'];
-  } catch (error) {
-    console.error('Error en validación:', error);
-    return ['error_db', 'Error en validación'];
-  }
-}
-
-async function addLog(canal, evento, mensaje) {
-  try {
-    // Obtener o crear el canal
-    let [canalResult] = await db.query('SELECT id FROM socket_io_canales WHERE nombre = ?', [canal]);
-    let canalId;
-    
-    if (!canalResult) {
-      await db.query('INSERT INTO socket_io_canales (nombre) VALUES (?)', [canal]);
-      [canalResult] = await db.query('SELECT id FROM socket_io_canales WHERE nombre = ?', [canal]);
-    }
-    canalId = canalResult.id;
-
-    // Obtener o crear el evento
-    let [eventoResult] = await db.query('SELECT id FROM socket_io_eventos WHERE evento = ? AND id_canal = ?', [evento, canalId]);
-    let eventoId;
-    
-    if (!eventoResult) {
-      await db.query('INSERT INTO socket_io_eventos (id_canal, evento) VALUES (?, ?)', [canalId, evento]);
-      [eventoResult] = await db.query('SELECT id FROM socket_io_eventos WHERE evento = ? AND id_canal = ?', [evento, canalId]);
-    }
-    eventoId = eventoResult.id;
-
-    // Registrar en historial
-    await db.query(
-      'INSERT INTO socket_io_historial (id_canal, id_evento, ip, mensaje) VALUES (?, ?, ?, ?)',
-      [canalId, eventoId, '0.0.0.0', JSON.stringify(mensaje)]
-    );
-  } catch (error) {
-    console.error('Error al agregar log:', error);
-  }
-}
-
-function updateActiveChannel(canal, socketId, isJoining = true) {
-  if (isJoining) {
-    if (!activeChannels.has(canal)) {
-      activeChannels.set(canal, new Set());
-    }
-    activeChannels.get(canal).add(socketId);
-  } else {
-    if (activeChannels.has(canal)) {
-      activeChannels.get(canal).delete(socketId);
-      if (activeChannels.get(canal).size === 0) {
-        activeChannels.delete(canal);
-      }
-    }
-  }
-}
-
-async function getAllChannels() {
-  try {
-    const channels = await db.query('SELECT nombre FROM socket_io_canales');
-    return channels.map(c => c.nombre);
-  } catch (error) {
-    console.error('Error obteniendo canales:', error);
-    return [];
-  }
-}
-
-// Cargar datos iniciales
-loadData();
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public', 'index.html'));
-});
-
-app.get('/logs', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public', 'logs.html'));
-});
-
-app.get('/api/logs', async (req, res) => {
-  try {
-    const logs = await db.query(`
-      SELECT 
-        h.*, 
-        c.nombre as canal_nombre,
-        e.evento as evento_nombre
-      FROM socket_io_historial h 
-      JOIN socket_io_canales c ON h.id_canal = c.id 
-      JOIN socket_io_eventos e ON h.id_evento = e.id 
-      ORDER BY h.created_at DESC 
-      LIMIT 200
-    `);
-    res.json(logs);
-  } catch (error) {
-    console.error('Error al obtener logs:', error);
-    res.status(500).json({ error: 'Error al obtener logs' });
-  }
-});
-
-app.get('/api/active-channels', async (req, res) => {
-  try {
-    const allChannels = await getAllChannels();
-    const channelsInfo = {
-      all: allChannels.reduce((acc, channel) => {
-        const activeConnections = activeChannels.get(channel)?.size || 0;
-        acc[channel] = {
-          isActive: activeConnections > 0,
-          connections: activeConnections
-        };
-        return acc;
-      }, {})
-    };
-    res.json(channelsInfo);
-  } catch (error) {
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-app.post('/enviar-mensaje', async (req, res) => {
-  const { canal, token, evento, mensaje } = req.body;
-  const ipCliente = req.ip;
-  
-  try {
-    const [result] = await db.query(`
-      SELECT t.id 
-      FROM socket_io_tokens t 
-      JOIN socket_io_canales c ON t.id_canal = c.id 
-      LEFT JOIN socket_io_ips_validas iv ON t.id_canal = iv.id_canal 
-      WHERE c.nombre = ? AND t.token = ? AND t.permisos = 'emisor'
-      AND (iv.ip IS NULL OR iv.ip = ? OR iv.ip = '0.0.0.0')
-    `, [canal, token, ipCliente]);
-
-    if (!result) {
-      return res.status(400).json({ error: 'invalid_sender', mensaje: 'Emisor no válido' });
-    }
-
-    io.to(canal).emit(evento, mensaje);
-    await addLog(canal, evento, mensaje);
-    res.json({ mensaje: 'Evento enviado correctamente' });
-  } catch (error) {
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-io.on('connection', (socket) => {
-  console.log('Cliente conectado:', socket.id);
-  const subscribedChannels = new Set();
-
-  socket.on('unirseCanal', async (data) => {
-    const { canal, token } = data;
-    const [error, razon] = await validarListener(canal, token);
-    
-    if (error) {
-      socket.emit('respuesta', { mensaje: razon });
-    } else {
-      socket.join(canal);
-      subscribedChannels.add(canal);
-      updateActiveChannel(canal, socket.id, true);
-      socket.emit('respuesta', { mensaje: `Te has unido al canal: ${canal}` });
-      await addLog(canal, 'unirseCanal', { socketId: socket.id });
-    }
+// Ejecutar la inicialización
+initializeDatabase()
+  .then(() => {
+    console.log('Proceso de inicialización completado');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('Error en el proceso de inicialización:', error);
+    process.exit(1);
   });
-
-  socket.on('disconnect', async () => {
-    for (const canal of subscribedChannels) {
-      updateActiveChannel(canal, socket.id, false);
-    }
-    subscribedChannels.clear();
-    await addLog('system', 'disconnect', { socketId: socket.id });
-  });
-});
-
-server.listen(PORT, () => {
-  console.log(`Servidor corriendo en el puerto ${PORT}`);
-});
