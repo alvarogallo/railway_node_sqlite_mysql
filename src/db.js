@@ -66,24 +66,24 @@ async function setupTables() {
   const dropBingosSql = 'DROP TABLE IF EXISTS bingo_bingos;';
   const dropParamsSql = 'DROP TABLE IF EXISTS bingo_parametros;';
   
-  const createBingosSql = `
-      CREATE TABLE bingo_bingos (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          evento VARCHAR(32) NOT NULL,
-          numeros VARCHAR(255) NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-  `;
+  // const createBingosSql = `
+  //     CREATE TABLE bingo_bingos (
+  //         id INT AUTO_INCREMENT PRIMARY KEY,
+  //         evento VARCHAR(32) NOT NULL,
+  //         numeros VARCHAR(255) NOT NULL,
+  //         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  //     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  // `;
   
-  const createParamsSql = `
-      CREATE TABLE bingo_parametros (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          nombre VARCHAR(32) NOT NULL,
-          valor VARCHAR(32) NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-  `;
+  // const createParamsSql = `
+  //     CREATE TABLE bingo_parametros (
+  //         id INT AUTO_INCREMENT PRIMARY KEY,
+  //         nombre VARCHAR(32) NOT NULL,
+  //         valor VARCHAR(32) NOT NULL,
+  //         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  //         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  //     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  // `;
 
   try {
       console.log('Eliminando tablas existentes...');
