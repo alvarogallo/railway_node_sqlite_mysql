@@ -117,11 +117,21 @@ let senders = [];
 const activeChannels = new Map();
 
 
+// app.use(session({
+//   secret: process.env.SESSION_SECRET || 'secret-key',
+//   resave: false,
+//   saveUninitialized: false,
+//   cookie: { secure: process.env.NODE_ENV === 'production' }
+// }));
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'secret-key',
+  secret: process.env.SESSION_SECRET || 'tu-secret-key',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: process.env.NODE_ENV === 'production' }
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 horas
+  }
 }));
 
 // Rutas de administración
@@ -129,6 +139,7 @@ app.get('/admin/login', (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'admin-login.html'));
 });
 
+// Modificar en server.js
 // Modificar en server.js
 app.post('/admin/login', async (req, res) => {
   const { email, password } = req.body;
