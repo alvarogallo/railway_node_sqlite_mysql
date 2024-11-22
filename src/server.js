@@ -6,6 +6,7 @@ const path = require('path');
 const db = require('./db');
 require('dotenv').config();
 const session = require('express-session');
+const bcrypt = require('bcryptjs');
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -72,26 +73,29 @@ app.post('/login', async (req, res) => {
   
   try {
       const { email, password } = req.body;
-
+      
       if (!email || !password) {
           console.log('Faltan credenciales');
           return res.status(400).json({ error: 'Email y contraseña son requeridos' });
       }
 
-      console.log('Buscando usuario con email:', email);
-      const [user] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-
-      console.log('Usuario encontrado:', !!user);
+      // Buscar usuario
+      console.log('Buscando usuario:', email);
+      const [user] = await db.query(
+          'SELECT * FROM users WHERE email = ?', 
+          [email]
+      );
       
+      console.log('Usuario encontrado:', !!user);
+      console.log('Hash almacenado:', user?.password);
+
       if (!user) {
           return res.status(401).json({ error: 'Credenciales inválidas' });
       }
 
-      // En desarrollo, imprimir la contraseña hasheada para verificación
-      console.log('Password hash en DB:', user.password);
-
-      const validPassword = password === user.password; // Comparación simple temporal
-      console.log('Password válido:', validPassword);
+      // Verificar contraseña con bcrypt
+      const validPassword = await bcrypt.compare(password, user.password);
+      console.log('Contraseña válida:', validPassword);
 
       if (!validPassword) {
           return res.status(401).json({ error: 'Credenciales inválidas' });
@@ -100,15 +104,36 @@ app.post('/login', async (req, res) => {
       // Crear sesión
       req.session.userId = user.id;
       req.session.userEmail = user.email;
-      console.log('Sesión creada:', req.session);
+      req.session.userRole = user.role;
 
-      res.json({ success: true, redirect: '/logs' });
+      // Guardar sesión explícitamente
+      req.session.save((err) => {
+          if (err) {
+              console.error('Error al guardar sesión:', err);
+              return res.status(500).json({ error: 'Error al crear sesión' });
+          }
+
+          console.log('Sesión creada:', {
+              userId: req.session.userId,
+              userEmail: req.session.userEmail,
+              sessionID: req.session.id
+          });
+
+          res.json({ 
+              success: true, 
+              redirect: '/logs',
+              user: {
+                  email: user.email,
+                  role: user.role
+              }
+          });
+      });
 
   } catch (error) {
-      console.error('Error detallado:', error);
+      console.error('Error en login:', error);
       res.status(500).json({ 
           error: 'Error interno del servidor',
-          details: error.message
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
   }
 });
