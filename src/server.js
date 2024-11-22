@@ -11,35 +11,40 @@ const mysqlConfig = {
 };
 
 const queries = [
-  "SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO'",
-  "SET time_zone = '+00:00'",
-  
-  `CREATE TABLE IF NOT EXISTS socket_io_administradores (
+  `CREATE TABLE IF NOT EXISTS socket_io_ips_lista_blanca (
     id int(11) NOT NULL AUTO_INCREMENT,
-    email varchar(64) NOT NULL,
-    role varchar(8) NOT NULL DEFAULT 'ADMIN',
+    ip varchar(64) NOT NULL,
+    uso varchar(255) NOT NULL DEFAULT 'RW',
     created_at datetime NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY (id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
 
-  `CREATE TABLE IF NOT EXISTS socket_io_canales (
+  `CREATE TABLE IF NOT EXISTS socket_io_ip_rechazadas (
     id int(11) NOT NULL AUTO_INCREMENT,
-    vida int(8) NOT NULL DEFAULT 1,
-    nombre varchar(50) NOT NULL,
-    descripcion text DEFAULT NULL,
-    created_at timestamp NOT NULL DEFAULT current_timestamp(),
-    PRIMARY KEY (id),
-    UNIQUE KEY nombre (nombre)
+    ip varchar(45) NOT NULL,
+    fecha_rechazo timestamp NOT NULL DEFAULT current_timestamp(),
+    PRIMARY KEY (id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
 
-  `CREATE TABLE IF NOT EXISTS socket_io_historial (
+  `CREATE TABLE IF NOT EXISTS socket_io_log (
     id int(11) NOT NULL AUTO_INCREMENT,
-    ip_sender varchar(64) NOT NULL,
-    canal varchar(50) DEFAULT NULL,
-    evento varchar(255) DEFAULT NULL,
-    mensaje varchar(255) NOT NULL,
-    timestamp datetime NOT NULL DEFAULT current_timestamp(),
+    accion varchar(32) NOT NULL,
+    fecha date DEFAULT NULL,
+    created_at timestamp NOT NULL DEFAULT current_timestamp(),
+    updated_at timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
     PRIMARY KEY (id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
+
+  `CREATE TABLE IF NOT EXISTS socket_io_tokens (
+    id int(11) NOT NULL AUTO_INCREMENT,
+    canal_id int(11) NOT NULL,
+    token varchar(64) NOT NULL,
+    tipo enum('enviador','oidor') NOT NULL,
+    created_at timestamp NOT NULL DEFAULT current_timestamp(),
+    PRIMARY KEY (id),
+    UNIQUE KEY token (token),
+    KEY canal_id (canal_id),
+    CONSTRAINT socket_io_tokens_ibfk_1 FOREIGN KEY (canal_id) REFERENCES socket_io_canales (id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`
 ];
 
@@ -50,17 +55,16 @@ async function initializeDatabase() {
     connection = await mysql.createConnection(mysqlConfig);
     console.log('Conexión establecida con éxito');
 
-    console.log('Creando tablas...');
-    // Ejecutamos cada query por separado
+    console.log('Creando tablas restantes...');
     for (const query of queries) {
       console.log('Ejecutando query:', query.substring(0, 50) + '...');
       await connection.query(query);
     }
-    console.log('Tablas creadas exitosamente');
+    console.log('Tablas restantes creadas exitosamente');
 
-    // Verificamos las tablas creadas
+    // Verificamos todas las tablas
     const [tables] = await connection.query('SHOW TABLES');
-    console.log('Tablas en la base de datos:', tables.map(t => Object.values(t)[0]));
+    console.log('Todas las tablas en la base de datos:', tables.map(t => Object.values(t)[0]));
 
   } catch (error) {
     console.error('Error durante la inicialización:', {
@@ -78,7 +82,7 @@ async function initializeDatabase() {
 }
 
 // Ejecutar la inicialización
-console.log('Iniciando proceso de creación de tablas...');
+console.log('Iniciando proceso de creación de tablas restantes...');
 initializeDatabase()
   .then(() => {
     console.log('Proceso de inicialización completado exitosamente');
