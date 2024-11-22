@@ -143,6 +143,42 @@ app.get('/logout', (req, res) => {
   req.session.destroy();
   res.redirect('/login');
 });
+app.get('/check-auth', async (req, res) => {
+  try {
+      // Verificar si hay sesión
+      if (!req.session || !req.session.userId) {
+          return res.status(401).json({ 
+              authorized: false, 
+              message: 'No hay sesión activa' 
+          });
+      }
+
+      // Verificar que el usuario existe y es admin
+      const [user] = await db.query(
+          'SELECT role FROM users WHERE id = ?', 
+          [req.session.userId]
+      );
+
+      if (!user || user.role !== 'ADMIN') {
+          return res.status(403).json({ 
+              authorized: false, 
+              message: 'Usuario no autorizado' 
+          });
+      }
+
+      res.json({ 
+          authorized: true, 
+          role: user.role 
+      });
+
+  } catch (error) {
+      console.error('Error en verificación de auth:', error);
+      res.status(500).json({ 
+          authorized: false, 
+          message: 'Error interno del servidor' 
+      });
+  }
+});
 
 // Proteger la ruta de logs
 app.get('/logs', authMiddleware, (req, res) => {
