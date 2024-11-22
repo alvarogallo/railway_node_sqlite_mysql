@@ -6,15 +6,12 @@ const { open } = require('sqlite');
 const CUAL_DATABASE = process.env.CUAL_DATABASE || 'SQLITE'; // MYSQL o SQLITE
 
 const mysqlConfig = {
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || "11702"),
-  user: process.env.DB_USER,
+  host: "mysql.railway.internal",
+  port: "3306",
+  user: 'root',
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  connectTimeout: 20000
+  database: 'railway',
+  connectTimeout: 10000
 };
 
 let mysqlPool = null;
