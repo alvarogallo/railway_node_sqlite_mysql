@@ -10,18 +10,46 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+const MySQLStore = require('express-mysql-session')(session);
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-// Configuración básica de sesión
+const options = {
+  host: "mysql.railway.internal",
+  port: "3306",
+  user: 'root',
+  password: process.env.DB_PASSWORD,
+  database: 'railway',
+  clearExpired: true,
+  checkExpirationInterval: 900000,
+  expiration: 86400000, // 24 horas
+  createDatabaseTable: true,
+  schema: {
+      tableName: 'sessions',
+      columnNames: {
+          session_id: 'session_id',
+          expires: 'expires',
+          data: 'data'
+      }
+  }
+};
+
+const sessionStore = new MySQLStore(options);
+
 app.use(session({
+  key: 'socket_io_sid',
   secret: process.env.SESSION_SECRET || 'socket-io-secret-123',
+  store: sessionStore,
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false }
+  cookie: { 
+      secure: false, // Cambiar a true si usas HTTPS
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000 // 24 horas
+  }
 }));
 
 const authMiddleware = (req, res, next) => {
