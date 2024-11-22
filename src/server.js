@@ -11,63 +11,49 @@ const mysqlConfig = {
 };
 
 const queries = [
-  `CREATE TABLE IF NOT EXISTS socket_io_ips_lista_blanca (
+  // Primero eliminamos la tabla de administradores
+  `DROP TABLE IF EXISTS socket_io_administradores`,
+
+  // Creamos la nueva tabla users
+  `CREATE TABLE IF NOT EXISTS users (
     id int(11) NOT NULL AUTO_INCREMENT,
-    ip varchar(64) NOT NULL,
-    uso varchar(255) NOT NULL DEFAULT 'RW',
+    email varchar(64) NOT NULL,
+    password varchar(255) NOT NULL,
+    role varchar(20) NOT NULL DEFAULT 'USER',
+    status varchar(20) NOT NULL DEFAULT 'ACTIVE',
     created_at datetime NOT NULL DEFAULT current_timestamp(),
-    PRIMARY KEY (id)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
-
-  `CREATE TABLE IF NOT EXISTS socket_io_ip_rechazadas (
-    id int(11) NOT NULL AUTO_INCREMENT,
-    ip varchar(45) NOT NULL,
-    fecha_rechazo timestamp NOT NULL DEFAULT current_timestamp(),
-    PRIMARY KEY (id)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
-
-  `CREATE TABLE IF NOT EXISTS socket_io_log (
-    id int(11) NOT NULL AUTO_INCREMENT,
-    accion varchar(32) NOT NULL,
-    fecha date DEFAULT NULL,
-    created_at timestamp NOT NULL DEFAULT current_timestamp(),
-    updated_at timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-    PRIMARY KEY (id)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
-
-  `CREATE TABLE IF NOT EXISTS socket_io_tokens (
-    id int(11) NOT NULL AUTO_INCREMENT,
-    canal_id int(11) NOT NULL,
-    token varchar(64) NOT NULL,
-    tipo enum('enviador','oidor') NOT NULL,
-    created_at timestamp NOT NULL DEFAULT current_timestamp(),
+    updated_at datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+    last_login datetime DEFAULT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY token (token),
-    KEY canal_id (canal_id),
-    CONSTRAINT socket_io_tokens_ibfk_1 FOREIGN KEY (canal_id) REFERENCES socket_io_canales (id)
+    UNIQUE KEY email (email)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`
 ];
 
-async function initializeDatabase() {
+async function updateDatabase() {
   let connection;
   try {
     console.log('Intentando conectar a la base de datos...');
     connection = await mysql.createConnection(mysqlConfig);
     console.log('Conexión establecida con éxito');
 
-    console.log('Creando tablas restantes...');
+    console.log('Actualizando tablas...');
     for (const query of queries) {
       console.log('Ejecutando query:', query.substring(0, 50) + '...');
       await connection.query(query);
     }
-    console.log('Tablas restantes creadas exitosamente');
+    console.log('Actualización completada exitosamente');
 
-    // Verificamos todas las tablas
+    // Verificamos las tablas existentes
     const [tables] = await connection.query('SHOW TABLES');
-    console.log('Todas las tablas en la base de datos:', tables.map(t => Object.values(t)[0]));
+    console.log('Tablas actuales en la base de datos:', tables.map(t => Object.values(t)[0]));
+
+    // Mostramos la estructura de la nueva tabla users
+    const [structure] = await connection.query('DESCRIBE socket_io_users');
+    console.log('\nEstructura de la tabla socket_io_users:');
+    console.log(structure);
 
   } catch (error) {
-    console.error('Error durante la inicialización:', {
+    console.error('Error durante la actualización:', {
       message: error.message,
       code: error.code,
       sqlState: error.sqlState
@@ -81,14 +67,14 @@ async function initializeDatabase() {
   }
 }
 
-// Ejecutar la inicialización
-console.log('Iniciando proceso de creación de tablas restantes...');
-initializeDatabase()
+// Ejecutar la actualización
+console.log('Iniciando proceso de actualización...');
+updateDatabase()
   .then(() => {
-    console.log('Proceso de inicialización completado exitosamente');
+    console.log('Proceso de actualización completado exitosamente');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('Error en el proceso de inicialización');
+    console.error('Error en el proceso de actualización');
     process.exit(1);
   });
