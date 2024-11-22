@@ -129,6 +129,7 @@ app.get('/admin/login', (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'admin-login.html'));
 });
 
+// Modificar en server.js
 app.post('/admin/login', async (req, res) => {
   const { email, password } = req.body;
   
@@ -141,17 +142,22 @@ app.post('/admin/login', async (req, res) => {
       [email]
     );
     
-    console.log('Usuario encontrado:', user ? 'Sí' : 'No');
+    console.log('Usuario encontrado:', !!user);
     
     if (!user) {
-      return res.status(401).json({ error: 'Credenciales inválidas (usuario no encontrado)' });
+      return res.status(401).json({ 
+        error: 'Credenciales inválidas',
+        debug: { step: 'user_check' }
+      });
     }
 
-    console.log('Role del usuario:', user.role);
-    
-    // Verificar que sea admin
+    // Verificar rol
+    console.log('Rol del usuario:', user.role);
     if (user.role !== 'ADMIN') {
-      return res.status(401).json({ error: 'No tienes permisos de administrador' });
+      return res.status(401).json({ 
+        error: 'No tienes permisos de administrador',
+        debug: { step: 'role_check', role: user.role }
+      });
     }
 
     // Verificar contraseña
@@ -159,7 +165,10 @@ app.post('/admin/login', async (req, res) => {
     console.log('Contraseña válida:', validPassword);
     
     if (!validPassword) {
-      return res.status(401).json({ error: 'Credenciales inválidas (contraseña incorrecta)' });
+      return res.status(401).json({ 
+        error: 'Credenciales inválidas',
+        debug: { step: 'password_check' }
+      });
     }
 
     // Crear sesión
@@ -169,14 +178,38 @@ app.post('/admin/login', async (req, res) => {
       role: user.role
     };
 
+    // Esperar a que la sesión se guarde
+    await new Promise((resolve) => req.session.save(resolve));
+
     console.log('Sesión creada:', req.session.admin);
 
-    res.json({ redirect: '/admin/dashboard' });
+    // Enviar respuesta
+    return res.status(200).json({ 
+      success: true,
+      redirect: '/admin/dashboard',
+      debug: { 
+        step: 'success',
+        sessionId: req.session.id,
+        hasSession: !!req.session.admin
+      }
+    });
     
   } catch (error) {
     console.error('Error en login:', error);
-    res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
+    res.status(500).json({ 
+      error: 'Error interno del servidor',
+      debug: { 
+        step: 'error',
+        message: error.message
+      }
+    });
   }
+});
+
+// Verificar que la ruta del dashboard existe y está correcta
+app.get('/admin/dashboard', authMiddleware, (req, res) => {
+  console.log('Accediendo al dashboard. Sesión:', req.session.admin);
+  res.sendFile(path.join(__dirname, 'public', 'admin-dashboard.html'));
 });
 
 app.get('/admin/dashboard', authMiddleware, (req, res) => {
