@@ -15,7 +15,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const bcrypt = require('bcryptjs');
+
 
 app.post('/admin/set-password', async (req, res) => {
   try {
