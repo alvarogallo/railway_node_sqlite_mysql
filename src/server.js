@@ -5,7 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const db = require('./db');
 require('dotenv').config();
-const session = require('express-session');
+
 const bcrypt = require('bcryptjs');
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -14,6 +14,9 @@ const authMiddleware = require('../middleware/authMiddleware');
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
 
 // app.get('/admin/set-password', (req, res) => {
 //   res.sendFile(path.join(__dirname, '../public', 'set-password.html'));
@@ -55,6 +58,42 @@ app.use(express.json());
 //     res.status(500).json({ error: 'Error interno del servidor' });
 //   }
 // });
+
+const options = {
+  host: "mysql.railway.internal",
+  port: "3306",
+  user: 'root',
+  password: process.env.DB_PASSWORD,
+  database: 'railway',
+  createDatabaseTable: true, // Crear tabla de sesiones si no existe
+  schema: {
+      tableName: 'sessions',
+      columnNames: {
+          session_id: 'session_id',
+          expires: 'expires',
+          data: 'data'
+      }
+  }
+};
+
+// Crear el store de MySQL
+const sessionStore = new MySQLStore(options);
+
+// Configurar la sesión
+app.use(session({
+    key: 'session_cookie_name',
+    secret: process.env.SESSION_SECRET || 'socket-io-secret-123',
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false, // Cambiar a true si usas HTTPS
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 horas
+    }
+}));
+
+
 
 // Ruta de diagnóstico
 app.get('/admin/diagnostico', (req, res) => {
@@ -128,79 +167,63 @@ app.get('/admin/login', (req, res) => {
 
 // Modificar en server.js
 // Modificar en server.js
+// Ruta de login mejorada
 app.post('/admin/login', async (req, res) => {
   const { email, password } = req.body;
   
-  console.log('Intento de login:', { email });
+  console.log('Login attempt:', { email });
   
   try {
-    // Buscar usuario
-    const [user] = await db.query(
-      'SELECT * FROM users WHERE email = ?', 
-      [email]
-    );
-    
-    console.log('Usuario encontrado:', !!user);
-    
-    if (!user) {
-      return res.status(401).json({ 
-        error: 'Credenciales inválidas',
-        debug: { step: 'user_check' }
-      });
-    }
-
-    // Verificar rol
-    console.log('Rol del usuario:', user.role);
-    if (user.role !== 'ADMIN') {
-      return res.status(401).json({ 
-        error: 'No tienes permisos de administrador',
-        debug: { step: 'role_check', role: user.role }
-      });
-    }
-
-    // Verificar contraseña
-    const validPassword = await bcrypt.compare(password, user.password);
-    console.log('Contraseña válida:', validPassword);
-    
-    if (!validPassword) {
-      return res.status(401).json({ 
-        error: 'Credenciales inválidas',
-        debug: { step: 'password_check' }
-      });
-    }
-
-    // Crear sesión
-    req.session.admin = {
-      id: user.id,
-      email: user.email,
-      role: user.role
-    };
-
-    // Esperar a que la sesión se guarde
-    await new Promise((resolve) => req.session.save(resolve));
-
-    console.log('Sesión creada:', req.session.admin);
-
-    // Enviar respuesta
-    return res.status(200).json({ 
-      success: true,
-      redirect: '/admin/dashboard',
-      debug: { 
-        step: 'success',
-        sessionId: req.session.id,
-        hasSession: !!req.session.admin
+      const [user] = await db.query(
+          'SELECT * FROM users WHERE email = ? AND role = "ADMIN"', 
+          [email]
+      );
+      
+      console.log('User found:', !!user);
+      
+      if (!user) {
+          return res.status(401).json({ error: 'Credenciales inválidas' });
       }
-    });
-    
+
+      const validPassword = await bcrypt.compare(password, user.password);
+      console.log('Password valid:', validPassword);
+      
+      if (!validPassword) {
+          return res.status(401).json({ error: 'Credenciales inválidas' });
+      }
+
+      req.session.admin = {
+          id: user.id,
+          email: user.email,
+          role: user.role
+      };
+
+      await new Promise((resolve, reject) => {
+          req.session.save((err) => {
+              if (err) {
+                  console.error('Session save error:', err);
+                  reject(err);
+                  return;
+              }
+              console.log('Session saved successfully:', req.sessionID);
+              resolve();
+          });
+      });
+
+      console.log('Login successful, session created:', {
+          sessionID: req.sessionID,
+          admin: req.session.admin
+      });
+
+      res.json({ 
+          success: true, 
+          redirect: '/admin/dashboard',
+          sessionID: req.sessionID
+      });
+      
   } catch (error) {
-    console.error('Error en login:', error);
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
-      debug: { 
-        step: 'error',
-        message: error.message
-      }
-    });
+      console.error('Login error:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
