@@ -13,21 +13,20 @@ const mysqlConfig = {
 const queries = [
   // Primero eliminamos todas las tablas existentes en orden correcto por las foreign keys
   `DROP TABLE IF EXISTS socket_io_tokens`,
-  `DROP TABLE IF EXISTS socket_io_ips_lista_blanca`,
-  `DROP TABLE IF EXISTS socket_io_ip_rechazadas`,
+  `DROP TABLE IF EXISTS socket_io_ips_validas`,
   `DROP TABLE IF EXISTS socket_io_historial`,
-  `DROP TABLE IF EXISTS socket_io_log`,
-  `DROP TABLE IF EXISTS socket_io_administradores`,
+  `DROP TABLE IF EXISTS socket_io_eventos`,
+  `DROP TABLE IF EXISTS socket_io_conexiones_rechazadas`,
   `DROP TABLE IF EXISTS socket_io_canales`,
+  `DROP TABLE IF EXISTS users`,
   
-  // También eliminamos las nuevas tablas por si existieran
+  // Eliminamos también las tablas sin prefijo por si existen
   `DROP TABLE IF EXISTS tokens`,
-  `DROP TABLE IF EXISTS historial`,
   `DROP TABLE IF EXISTS ips_validas`,
+  `DROP TABLE IF EXISTS historial`,
   `DROP TABLE IF EXISTS eventos`,
   `DROP TABLE IF EXISTS conexiones_rechazadas`,
   `DROP TABLE IF EXISTS canales`,
-  `DROP TABLE IF EXISTS users`,
 
   // Configuración inicial
   "SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO'",
@@ -47,7 +46,7 @@ const queries = [
     UNIQUE KEY email (email)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
 
-  `CREATE TABLE canales (
+  `CREATE TABLE socket_io_canales (
     id int(11) NOT NULL AUTO_INCREMENT,
     nombre varchar(255) NOT NULL,
     created_at timestamp NOT NULL DEFAULT current_timestamp(),
@@ -56,7 +55,7 @@ const queries = [
     PRIMARY KEY (id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
 
-  `CREATE TABLE conexiones_rechazadas (
+  `CREATE TABLE socket_io_conexiones_rechazadas (
     id int(11) NOT NULL AUTO_INCREMENT,
     canal_id int(11) DEFAULT NULL,
     ip varchar(45) NOT NULL,
@@ -67,7 +66,7 @@ const queries = [
     KEY idx_ip_canal (ip,canal_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
 
-  `CREATE TABLE eventos (
+  `CREATE TABLE socket_io_eventos (
     id int(11) NOT NULL AUTO_INCREMENT,
     id_canal int(11) DEFAULT NULL,
     evento varchar(255) NOT NULL,
@@ -76,7 +75,7 @@ const queries = [
     KEY id_canal (id_canal)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
 
-  `CREATE TABLE historial (
+  `CREATE TABLE socket_io_historial (
     id int(11) NOT NULL AUTO_INCREMENT,
     id_canal int(11) DEFAULT NULL,
     id_evento int(11) DEFAULT NULL,
@@ -88,7 +87,7 @@ const queries = [
     KEY id_evento (id_evento)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
 
-  `CREATE TABLE ips_validas (
+  `CREATE TABLE socket_io_ips_validas (
     id int(11) NOT NULL AUTO_INCREMENT,
     id_canal int(11) DEFAULT NULL,
     ip varchar(45) NOT NULL,
@@ -96,7 +95,7 @@ const queries = [
     KEY id_canal (id_canal)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
 
-  `CREATE TABLE tokens (
+  `CREATE TABLE socket_io_tokens (
     id int(11) NOT NULL AUTO_INCREMENT,
     id_canal int(11) DEFAULT NULL,
     token varchar(255) NOT NULL,
@@ -106,18 +105,18 @@ const queries = [
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
 
   // Agregamos las foreign keys
-  `ALTER TABLE eventos 
-   ADD CONSTRAINT eventos_ibfk_1 FOREIGN KEY (id_canal) REFERENCES canales (id)`,
+  `ALTER TABLE socket_io_eventos 
+   ADD CONSTRAINT socket_io_eventos_ibfk_1 FOREIGN KEY (id_canal) REFERENCES socket_io_canales (id)`,
 
-  `ALTER TABLE historial
-   ADD CONSTRAINT historial_ibfk_1 FOREIGN KEY (id_canal) REFERENCES canales (id),
-   ADD CONSTRAINT historial_ibfk_2 FOREIGN KEY (id_evento) REFERENCES eventos (id)`,
+  `ALTER TABLE socket_io_historial
+   ADD CONSTRAINT socket_io_historial_ibfk_1 FOREIGN KEY (id_canal) REFERENCES socket_io_canales (id),
+   ADD CONSTRAINT socket_io_historial_ibfk_2 FOREIGN KEY (id_evento) REFERENCES socket_io_eventos (id)`,
 
-  `ALTER TABLE ips_validas
-   ADD CONSTRAINT ips_validas_ibfk_1 FOREIGN KEY (id_canal) REFERENCES canales (id)`,
+  `ALTER TABLE socket_io_ips_validas
+   ADD CONSTRAINT socket_io_ips_validas_ibfk_1 FOREIGN KEY (id_canal) REFERENCES socket_io_canales (id)`,
 
-  `ALTER TABLE tokens
-   ADD CONSTRAINT tokens_ibfk_1 FOREIGN KEY (id_canal) REFERENCES canales (id)`
+  `ALTER TABLE socket_io_tokens
+   ADD CONSTRAINT socket_io_tokens_ibfk_1 FOREIGN KEY (id_canal) REFERENCES socket_io_canales (id)`
 ];
 
 async function recreateDatabase() {
