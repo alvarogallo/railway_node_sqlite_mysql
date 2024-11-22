@@ -108,17 +108,11 @@
             <button id="refreshButton" class="btn btn-outline-primary">
                 <i class="bi bi-arrow-clockwise"></i> Actualizar
             </button>
+            <button onclick="logout()" class="btn btn-outline-danger">
+                Cerrar Sesión
+            </button>
         </div>
-        <div id="redirectMessage" style="display: none;">
-            <div class="position-fixed top-0 start-0 end-0 bottom-0 d-flex align-items-center justify-content-center bg-light">
-                <div class="text-center">
-                    <div class="spinner-border text-primary mb-3" role="status">
-                        <span class="visually-hidden">Redirigiendo...</span>
-                    </div>
-                    <h4>Verificando sesión...</h4>
-                </div>
-            </div>
-        </div>
+
         <!-- Selector de fuente de datos -->
         <div class="data-source-selector">
             <h5>Fuente de Datos</h5>
@@ -131,9 +125,7 @@
                 </button>
             </div>
         </div>
-        <button onclick="logout()" class="btn btn-outline-danger">
-            Cerrar Sesión
-        </button>
+        
         <!-- Sección de Configuración -->
         <div class="config-section">
             <div class="accordion" id="configAccordion">
@@ -237,35 +229,7 @@
             errorMessage += '</div>';
             container.innerHTML = errorMessage;
         }
-        async function checkAuth() {
-            try {
-                document.getElementById('redirectMessage').style.display = 'block';
-                
-                const response = await fetch('/check-auth', {
-                    credentials: 'include' // Importante para enviar cookies
-                });
 
-                if (!response.ok) {
-                    throw new Error('No autorizado');
-                }
-
-                const data = await response.json();
-                
-                if (!data.authorized || data.role !== 'ADMIN') {
-                    window.location.href = '/login';
-                    return;
-                }
-
-                // Si llegamos aquí, el usuario está autorizado
-                document.getElementById('redirectMessage').style.display = 'none';
-                document.getElementById('mainContent').style.display = 'block';
-
-            } catch (error) {
-                console.error('Error de autenticación:', error);
-                window.location.href = '/login';
-            }
-        }
-        window.addEventListener('load', checkAuth);
         // async function loadJsonContent() {
         //     try {
         //         const response = await fetch('/api/json-content');
@@ -453,9 +417,9 @@
             updateChannels();
             updateLogs();
         }, 5000);
-        function logout() {
-            window.location.href = '/logout';
-        }
-</script>
+function logout() {
+    window.location.href = '/logout';
+}        
+    </script>
 </body>
 </html>
