@@ -15,6 +15,54 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
+const authMiddleware = (req, res, next) => {
+  if (!req.session || !req.session.userId) {
+      return res.redirect('/login');
+  }
+  next();
+};
+
+// Rutas de autenticación
+app.get('/login', (req, res) => {
+  if (req.session && req.session.userId) {
+      return res.redirect('/logs');
+  }
+  res.sendFile(path.join(__dirname, '../public', 'login.html'));
+});
+
+app.post('/login', async (req, res) => {
+  try {
+      const { email, password } = req.body;
+      
+      const [user] = await db.query(
+          'SELECT * FROM users WHERE email = ?', 
+          [email]
+      );
+
+      if (!user || !await bcrypt.compare(password, user.password)) {
+          return res.status(401).json({ error: 'Credenciales inválidas' });
+      }
+
+      req.session.userId = user.id;
+      req.session.userEmail = user.email;
+
+      res.json({ success: true, redirect: '/logs' });
+  } catch (error) {
+      console.error('Error en login:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+app.get('/logout', (req, res) => {
+  req.session.destroy();
+  res.redirect('/login');
+});
+
+// Proteger la ruta de logs
+app.get('/logs', authMiddleware, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public', 'logs.html'));
+});
+
 const PORT = process.env.PORT || 3000;
 let listeners = [];
 let senders = [];
