@@ -13,6 +13,7 @@ app.use(express.json());
 app.use(express.static('public'));
 const MySQLStore = require('express-mysql-session')(session);
 
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] }
@@ -473,6 +474,40 @@ app.post('/api/logs/borrar-antiguos', authMiddleware, async (req, res) => {
       error: 'Error al borrar logs antiguos',
       details: error.message 
     });
+  }
+});
+// Ruta para borrar logs antiguos excepto los de hoy (sin autenticación)
+app.get('/borrar-logs-antiguos', async (req, res) => {
+  try {
+      console.log('Iniciando borrado de logs antiguos (excepto hoy)');
+
+      const result = await db.query(`
+          DELETE FROM socket_io_historial 
+          WHERE id IN (
+              SELECT id FROM (
+                  SELECT id 
+                  FROM socket_io_historial 
+                  WHERE DATE(created_at) < DATE(CURRENT_TIMESTAMP)
+                  ORDER BY created_at ASC 
+                  LIMIT 500
+              ) as t
+          )
+      `);
+
+      const registrosBorrados = result.affectedRows || 0;
+      console.log(`Se borraron ${registrosBorrados} registros antiguos`);
+      
+      return res.json({
+          message: `Se borraron ${registrosBorrados} registros antiguos (exceptuando los de hoy)`,
+          registrosBorrados: registrosBorrados
+      });
+
+  } catch (error) {
+      console.error('Error al borrar logs:', error);
+      return res.status(500).json({
+          error: 'Error al borrar logs antiguos',
+          details: error.message
+      });
   }
 });
 //=====================aca termina adiciones del 2024

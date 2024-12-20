@@ -16,6 +16,7 @@
     "express-mysql-session": "^3.0.3",
     "express-session": "^1.18.1",
     "mysql2": "^3.11.3",
+    "node-cron": "^3.0.3",
     "socket.io": "^4.8.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"
