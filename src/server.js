@@ -360,6 +360,61 @@ app.get('/admin', isAdminMiddleware, (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'admin.html'));
 });
 
+// Ruta para ver historial de bingos
+app.get('/historial_bingos', authMiddleware, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public', 'historial_bingos.html'));
+});
+
+// API para obtener historial
+app.get('/api/historial_bingos', authMiddleware, async (req, res) => {
+  try {
+      const bingos = await db.query(
+          `SELECT id, evento, numeros, created_at 
+           FROM bingo_bingos 
+           ORDER BY created_at DESC`
+      );
+      res.json(bingos);
+  } catch (error) {
+      console.error('Error al obtener historial:', error);
+      res.status(500).json({ error: 'Error al obtener historial' });
+  }
+});
+
+// API para borrar bingos antiguos
+app.post('/api/borrar_bingos_antiguos', authMiddleware, async (req, res) => {
+  try {
+      // Obtener registros antiguos (más de 1 mes) limitado a 10
+      const [registrosABorrar] = await db.query(
+          `SELECT id FROM bingo_bingos 
+           WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 MONTH) 
+           ORDER BY created_at ASC 
+           LIMIT 10`
+      );
+
+      if (!registrosABorrar || registrosABorrar.length === 0) {
+          return res.json({ 
+              message: 'No hay registros antiguos para borrar',
+              registrosBorrados: 0
+          });
+      }
+
+      // Borrar los registros seleccionados
+      const ids = registrosABorrar.map(r => r.id);
+      await db.query(
+          'DELETE FROM bingo_bingos WHERE id IN (?)',
+          [ids]
+      );
+
+      res.json({
+          message: `Se borraron ${registrosABorrar.length} registros antiguos`,
+          registrosBorrados: registrosABorrar.length
+      });
+  } catch (error) {
+      console.error('Error al borrar registros:', error);
+      res.status(500).json({ error: 'Error al borrar registros antiguos' });
+  }
+});
+
 //=====================aca termina adiciones del 2024
 
 app.post('/enviar-mensaje', async (req, res) => {

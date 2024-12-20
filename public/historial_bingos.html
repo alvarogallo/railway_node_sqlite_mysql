@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial de Bingos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .historial-container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .numeros-bingo {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .table-container {
+            margin-top: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .actions-container {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container historial-container">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="/historial_bingos">Historial de Bingos</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/logs">Ver Logs</a>
+                        </li>
+                    </ul>
+                    <button onclick="logout()" class="btn btn-outline-danger">
+                        Cerrar Sesión
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="actions-container">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h2>Historial de Bingos</h2>
+                </div>
+                <div class="col-auto">
+                    <button id="borrarAntiguosBtn" class="btn btn-warning">
+                        Borrar Bingos Antiguos
+                    </button>
+                    <button id="refreshBtn" class="btn btn-primary ms-2">
+                        Actualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Evento</th>
+                        <th>Números</th>
+                        <th>Fecha</th>
+                    </tr>
+                </thead>
+                <tbody id="historialTableBody">
+                    <!-- La tabla se llenará con JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function formatDateTime(dateString) {
+            return new Date(dateString).toLocaleString('es-ES', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        async function cargarHistorial() {
+            try {
+                const response = await fetch('/api/historial_bingos');
+                if (!response.ok) throw new Error('Error al cargar historial');
+                
+                const bingos = await response.json();
+                const tbody = document.getElementById('historialTableBody');
+                
+                tbody.innerHTML = bingos.map(bingo => `
+                    <tr>
+                        <td>${bingo.id}</td>
+                        <td>${bingo.evento}</td>
+                        <td class="numeros-bingo" title="${bingo.numeros}">
+                            ${bingo.numeros}
+                        </td>
+                        <td>${formatDateTime(bingo.created_at)}</td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar el historial');
+            }
+        }
+
+        async function borrarBingosAntiguos() {
+            try {
+                const confirmacion = confirm('¿Estás seguro de que deseas borrar los bingos antiguos? Se borrarán hasta 10 registros con más de un mes de antigüedad.');
+                if (!confirmacion) return;
+
+                const response = await fetch('/api/borrar_bingos_antiguos', {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) throw new Error('Error al borrar registros');
+                
+                const result = await response.json();
+                alert(result.message);
+                
+                if (result.registrosBorrados > 0) {
+                    cargarHistorial(); // Actualizar la tabla
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al borrar registros antiguos');
+            }
+        }
+
+        function logout() {
+            window.location.href = '/logout';
+        }
+
+        // Event Listeners
+        document.getElementById('borrarAntiguosBtn').addEventListener('click', borrarBingosAntiguos);
+        document.getElementById('refreshBtn').addEventListener('click', cargarHistorial);
+
+        // Cargar datos iniciales
+        document.addEventListener('DOMContentLoaded', cargarHistorial);
+    </script>
+</body>
+</html>
