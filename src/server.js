@@ -13,6 +13,8 @@ app.use(express.json());
 app.use(express.static('public'));
 const MySQLStore = require('express-mysql-session')(session);
 
+const rutasNuevas = require('./rutas');
+
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -53,6 +55,7 @@ app.use(session({
       maxAge: 24 * 60 * 60 * 1000 // 24 horas
   }
 }));
+app.use(rutasNuevas);
 
 const authMiddleware = (req, res, next) => {
   if (!req.session || !req.session.userId) {
@@ -392,10 +395,7 @@ const isAdminMiddleware = async (req, res, next) => {
 app.get('/admin', isAdminMiddleware, (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'admin.html'));
 });
-// Ruta para la página de canales
-app.get('/canales', authMiddleware, (req, res) => {
-  res.sendFile(path.join(__dirname, '../public', 'canales.html'));
-});
+
 // Ruta para ver historial de bingos
 app.get('/historial_bingos', authMiddleware, (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'historial_bingos.html'));
@@ -480,40 +480,7 @@ app.post('/api/logs/borrar-antiguos', authMiddleware, async (req, res) => {
     });
   }
 });
-// Ruta para borrar logs antiguos excepto los de hoy (sin autenticación)
-app.get('/borrar-logs-antiguos', async (req, res) => {
-  try {
-      console.log('Iniciando borrado de logs antiguos (excepto hoy)');
 
-      const result = await db.query(`
-          DELETE FROM socket_io_historial 
-          WHERE id IN (
-              SELECT id FROM (
-                  SELECT id 
-                  FROM socket_io_historial 
-                  WHERE DATE(created_at) < DATE(CURRENT_TIMESTAMP)
-                  ORDER BY created_at ASC 
-                  LIMIT 500
-              ) as t
-          )
-      `);
-
-      const registrosBorrados = result.affectedRows || 0;
-      console.log(`Se borraron ${registrosBorrados} registros antiguos`);
-      
-      return res.json({
-          message: `Se borraron ${registrosBorrados} registros antiguos (exceptuando los de hoy)`,
-          registrosBorrados: registrosBorrados
-      });
-
-  } catch (error) {
-      console.error('Error al borrar logs:', error);
-      return res.status(500).json({
-          error: 'Error al borrar logs antiguos',
-          details: error.message
-      });
-  }
-});
 //=====================aca termina adiciones del 2024
 
 app.post('/enviar-mensaje', async (req, res) => {

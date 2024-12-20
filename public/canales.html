@@ -63,9 +63,14 @@
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="card-title mb-0">Canales Activos</h5>
-                            <button id="refreshBtn" class="btn btn-primary">
-                                Actualizar
-                            </button>
+                            <div>
+                                <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#crearCanalModal">
+                                    Crear Canal
+                                </button>
+                                <button id="refreshBtn" class="btn btn-primary">
+                                    Actualizar
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -74,6 +79,39 @@
 
         <div id="canalesContainer" class="row">
             <!-- Los canales se cargarán aquí dinámicamente -->
+        </div>
+    </div>
+
+    <!-- Modal para Crear Canal -->
+    <div class="modal fade" id="crearCanalModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Crear Nuevo Canal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="crearCanalForm">
+                        <div class="mb-3">
+                            <label for="nombreCanal" class="form-label">Nombre del Canal</label>
+                            <input type="text" class="form-control" id="nombreCanal" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tokenReceptor" class="form-label">Token Receptor</label>
+                            <input type="text" class="form-control" id="tokenReceptor" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tokenEmisor" class="form-label">Token Emisor</label>
+                            <input type="text" class="form-control" id="tokenEmisor" required>
+                        </div>
+                        <div class="alert alert-danger" id="errorMessage" style="display: none;"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="crearCanal()">Crear</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -109,6 +147,46 @@
             } catch (error) {
                 console.error('Error al cargar canales:', error);
                 alert('Error al cargar los canales');
+            }
+        }
+
+        async function crearCanal() {
+            try {
+                const nombreCanal = document.getElementById('nombreCanal').value;
+                const tokenReceptor = document.getElementById('tokenReceptor').value;
+                const tokenEmisor = document.getElementById('tokenEmisor').value;
+                
+                const response = await fetch('/api/canales', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nombre: nombreCanal,
+                        tokenReceptor,
+                        tokenEmisor
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Error al crear el canal');
+                }
+
+                // Cerrar modal y limpiar formulario
+                const modal = bootstrap.Modal.getInstance(document.getElementById('crearCanalModal'));
+                modal.hide();
+                document.getElementById('crearCanalForm').reset();
+                
+                // Recargar canales
+                await cargarCanales();
+                
+                alert('Canal creado exitosamente');
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('errorMessage').textContent = error.message;
+                document.getElementById('errorMessage').style.display = 'block';
             }
         }
 
