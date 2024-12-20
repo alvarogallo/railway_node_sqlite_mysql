@@ -444,7 +444,38 @@ app.post('/api/borrar_bingos_antiguos', authMiddleware, async (req, res) => {
       res.status(500).json({ error: 'Error al borrar registros antiguos' });
   }
 });
+app.post('/api/logs/borrar-antiguos', authMiddleware, async (req, res) => {
+  try {
+    // Obtener los 20 registros más antiguos
+    const [registrosABorrar] = await db.query(
+      `SELECT id FROM socket_io_historial 
+       ORDER BY created_at ASC 
+       LIMIT 20`
+    );
 
+    if (!registrosABorrar || registrosABorrar.length === 0) {
+      return res.json({ 
+        message: 'No hay registros para borrar',
+        registrosBorrados: 0
+      });
+    }
+
+    // Borrar los registros seleccionados
+    const ids = registrosABorrar.map(r => r.id);
+    await db.query(
+      'DELETE FROM socket_io_historial WHERE id IN (?)',
+      [ids]
+    );
+
+    res.json({
+      message: `Se borraron ${registrosABorrar.length} registros antiguos`,
+      registrosBorrados: registrosABorrar.length
+    });
+  } catch (error) {
+    console.error('Error al borrar logs:', error);
+    res.status(500).json({ error: 'Error al borrar logs antiguos' });
+  }
+});
 //=====================aca termina adiciones del 2024
 
 app.post('/enviar-mensaje', async (req, res) => {
