@@ -138,11 +138,23 @@
                                 <div class="channel-stats">
                                     <p>Estado: ${info.isActive ? 'Activo' : 'Inactivo'}</p>
                                     <p>Conexiones: ${info.connections}</p>
+                                    <hr>
+                                    <h6>IPs Autorizadas:</h6>
+                                    <div id="ipList-${canal}" class="mb-2">
+                                        Cargando IPs...
+                                    </div>
+                                    <div class="input-group mb-2">
+                                        <input type="text" class="form-control" placeholder="Nueva IP" id="newIp-${canal}">
+                                        <button class="btn btn-outline-success" onclick="agregarIp('${canal}')">
+                                            Agregar IP
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     `;
                     container.appendChild(card);
+                    cargarIpsCanal(canal); // 
                 });
             } catch (error) {
                 console.error('Error al cargar canales:', error);
@@ -189,6 +201,89 @@
                 document.getElementById('errorMessage').style.display = 'block';
             }
         }
+
+        async function cargarIpsCanal(canal) {
+    try {
+        const response = await fetch(`/api/canales/${encodeURIComponent(canal)}/ips`);
+        const data = await response.json();
+        
+        const ipListDiv = document.getElementById(`ipList-${canal}`);
+        if (data.ips.length === 0) {
+            ipListDiv.innerHTML = '<p class="text-muted">No hay IPs autorizadas</p>';
+            return;
+        }
+
+        ipListDiv.innerHTML = data.ips.map(ip => `
+            <div class="d-flex align-items-center mb-1">
+                <span class="me-2">${ip}</span>
+                <button class="btn btn-outline-danger btn-sm" 
+                        onclick="eliminarIp('${canal}', '${ip}')">
+                    &times;
+                </button>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error al cargar IPs:', error);
+    }
+}
+
+async function agregarIp(canal) {
+    try {
+        const ipInput = document.getElementById(`newIp-${canal}`);
+        const ip = ipInput.value.trim();
+        
+        if (!ip) {
+            alert('Por favor ingrese una IP');
+            return;
+        }
+
+        // Validación básica de IP
+        const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+        if (!ipRegex.test(ip)) {
+            alert('Por favor ingrese una IP válida');
+            return;
+        }
+
+        const response = await fetch(`/api/canales/${encodeURIComponent(canal)}/ips`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ip })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Error al agregar IP');
+        }
+
+        ipInput.value = '';
+        await cargarIpsCanal(canal);
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+async function eliminarIp(canal, ip) {
+    try {
+        if (!confirm(`¿Está seguro de eliminar la IP ${ip}?`)) {
+            return;
+        }
+
+        const response = await fetch(`/api/canales/${encodeURIComponent(canal)}/ips/${encodeURIComponent(ip)}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Error al eliminar IP');
+        }
+
+        await cargarIpsCanal(canal);
+    } catch (error) {
+        alert(error.message);
+    }
+}
 
         function logout() {
             window.location.href = '/logout';

@@ -106,5 +106,110 @@ router.post('/api/canales', async (req, res) => {
         });
     }
 });
+// Obtener IPs de un canal
+router.get('/api/canales/:canal/ips', async (req, res) => {
+    try {
+        const { canal } = req.params;
 
+        // Obtener el ID del canal
+        const [canalInfo] = await db.query(
+            'SELECT id FROM socket_io_canales WHERE nombre = ?',
+            [canal]
+        );
+
+        if (!canalInfo) {
+            return res.status(404).json({ error: 'Canal no encontrado' });
+        }
+
+        // Obtener las IPs
+        const ips = await db.query(
+            'SELECT ip FROM socket_io_ips_validas WHERE id_canal = ?',
+            [canalInfo.id]
+        );
+
+        res.json({
+            ips: ips.map(row => row.ip)
+        });
+    } catch (error) {
+        console.error('Error al obtener IPs:', error);
+        res.status(500).json({ error: 'Error al obtener IPs' });
+    }
+});
+
+// Agregar IP a un canal
+router.post('/api/canales/:canal/ips', async (req, res) => {
+    try {
+        const { canal } = req.params;
+        const { ip } = req.body;
+
+        if (!ip) {
+            return res.status(400).json({ error: 'IP requerida' });
+        }
+
+        // Validar formato de IP
+        const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+        if (!ipRegex.test(ip)) {
+            return res.status(400).json({ error: 'Formato de IP inválido' });
+        }
+
+        // Obtener el ID del canal
+        const [canalInfo] = await db.query(
+            'SELECT id FROM socket_io_canales WHERE nombre = ?',
+            [canal]
+        );
+
+        if (!canalInfo) {
+            return res.status(404).json({ error: 'Canal no encontrado' });
+        }
+
+        // Verificar si la IP ya existe para este canal
+        const [ipExistente] = await db.query(
+            'SELECT id FROM socket_io_ips_validas WHERE id_canal = ? AND ip = ?',
+            [canalInfo.id, ip]
+        );
+
+        if (ipExistente) {
+            return res.status(400).json({ error: 'La IP ya está autorizada para este canal' });
+        }
+
+        // Agregar la IP
+        await db.query(
+            'INSERT INTO socket_io_ips_validas (id_canal, ip) VALUES (?, ?)',
+            [canalInfo.id, ip]
+        );
+
+        res.json({ message: 'IP agregada exitosamente' });
+    } catch (error) {
+        console.error('Error al agregar IP:', error);
+        res.status(500).json({ error: 'Error al agregar IP' });
+    }
+});
+
+// Eliminar IP de un canal
+router.delete('/api/canales/:canal/ips/:ip', async (req, res) => {
+    try {
+        const { canal, ip } = req.params;
+
+        // Obtener el ID del canal
+        const [canalInfo] = await db.query(
+            'SELECT id FROM socket_io_canales WHERE nombre = ?',
+            [canal]
+        );
+
+        if (!canalInfo) {
+            return res.status(404).json({ error: 'Canal no encontrado' });
+        }
+
+        // Eliminar la IP
+        await db.query(
+            'DELETE FROM socket_io_ips_validas WHERE id_canal = ? AND ip = ?',
+            [canalInfo.id, ip]
+        );
+
+        res.json({ message: 'IP eliminada exitosamente' });
+    } catch (error) {
+        console.error('Error al eliminar IP:', error);
+        res.status(500).json({ error: 'Error al eliminar IP' });
+    }
+});
 module.exports = router;
