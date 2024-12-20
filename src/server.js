@@ -367,6 +367,7 @@ app.get('/api/active-channels', async (req, res) => {
 
 
 //========================================================dic 20 del 2024
+
 const isAdminMiddleware = async (req, res, next) => {
   if (!req.session || !req.session.userId) {
       return res.redirect('/login');
@@ -391,7 +392,10 @@ const isAdminMiddleware = async (req, res, next) => {
 app.get('/admin', isAdminMiddleware, (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'admin.html'));
 });
-
+// Ruta para la página de canales
+app.get('/canales', authMiddleware, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public', 'canales.html'));
+});
 // Ruta para ver historial de bingos
 app.get('/historial_bingos', authMiddleware, (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'historial_bingos.html'));
