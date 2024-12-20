@@ -315,10 +315,11 @@ app.get('/logs', (req, res) => {
 // });
 app.get('/api/logs', async (req, res) => {
   try {
-    // Obtener el conteo total
-    const [countResult] = await db.query(
+    // Obtener el conteo total - Corregido para obtener el valor directo
+    const [countRow] = await db.query(
       'SELECT COUNT(*) as total FROM socket_io_historial'
     );
+    const total = countRow.total;
     
     // Obtener los últimos 100 logs
     const logs = await db.query(`
@@ -335,7 +336,7 @@ app.get('/api/logs', async (req, res) => {
     `);
 
     res.json({
-      total: countResult.total,
+      total: total,
       logs: logs
     });
   } catch (error) {
@@ -446,9 +447,10 @@ app.post('/api/borrar_bingos_antiguos', authMiddleware, async (req, res) => {
 });
 app.post('/api/logs/borrar-antiguos', authMiddleware, async (req, res) => {
   try {
-    // Obtener los 20 registros más antiguos
-    const [registrosABorrar] = await db.query(
-      `SELECT id FROM socket_io_historial 
+    // Obtener los IDs de los 20 registros más antiguos
+    const registrosABorrar = await db.query(
+      `SELECT id 
+       FROM socket_io_historial 
        ORDER BY created_at ASC 
        LIMIT 20`
     );
@@ -473,7 +475,10 @@ app.post('/api/logs/borrar-antiguos', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error('Error al borrar logs:', error);
-    res.status(500).json({ error: 'Error al borrar logs antiguos' });
+    res.status(500).json({ 
+      error: 'Error al borrar logs antiguos',
+      details: error.message 
+    });
   }
 });
 //=====================aca termina adiciones del 2024
