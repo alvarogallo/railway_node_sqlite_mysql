@@ -294,20 +294,50 @@ app.get('/logs', (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'logs.html'));
 });
 
+// app.get('/api/logs', async (req, res) => {
+//   try {
+//     const logs = await db.query(`
+//       SELECT 
+//         h.*, 
+//         c.nombre as canal_nombre,
+//         e.evento as evento_nombre
+//       FROM socket_io_historial h 
+//       JOIN socket_io_canales c ON h.id_canal = c.id 
+//       JOIN socket_io_eventos e ON h.id_evento = e.id 
+//       ORDER BY h.created_at DESC 
+//       LIMIT 200
+//     `);
+//     res.json(logs);
+//   } catch (error) {
+//     console.error('Error al obtener logs:', error);
+//     res.status(500).json({ error: 'Error al obtener logs' });
+//   }
+// });
 app.get('/api/logs', async (req, res) => {
   try {
+    // Obtener el conteo total
+    const [countResult] = await db.query(
+      'SELECT COUNT(*) as total FROM socket_io_historial'
+    );
+    
+    // Obtener los últimos 100 logs
     const logs = await db.query(`
       SELECT 
         h.*, 
         c.nombre as canal_nombre,
-        e.evento as evento_nombre
+        e.evento as evento_nombre,
+        h.created_at
       FROM socket_io_historial h 
       JOIN socket_io_canales c ON h.id_canal = c.id 
       JOIN socket_io_eventos e ON h.id_evento = e.id 
       ORDER BY h.created_at DESC 
-      LIMIT 200
+      LIMIT 100
     `);
-    res.json(logs);
+
+    res.json({
+      total: countResult.total,
+      logs: logs
+    });
   } catch (error) {
     console.error('Error al obtener logs:', error);
     res.status(500).json({ error: 'Error al obtener logs' });
