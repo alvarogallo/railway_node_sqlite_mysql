@@ -333,6 +333,35 @@ app.get('/api/active-channels', async (req, res) => {
   }
 });
 
+
+//========================================================dic 20 del 2024
+const isAdminMiddleware = async (req, res, next) => {
+  if (!req.session || !req.session.userId) {
+      return res.redirect('/login');
+  }
+
+  try {
+      const [user] = await db.query(
+          'SELECT role FROM users WHERE id = ?',
+          [req.session.userId]
+      );
+
+      if (!user || user.role !== 'ADMIN') {
+          return res.status(403).send('Acceso denegado');
+      }
+
+      next();
+  } catch (error) {
+      console.error('Error en verificación de admin:', error);
+      res.status(500).send('Error interno del servidor');
+  }
+};
+app.get('/admin', isAdminMiddleware, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public', 'admin.html'));
+});
+
+//=====================aca termina adiciones del 2024
+
 app.post('/enviar-mensaje', async (req, res) => {
   const { canal, token, evento, mensaje } = req.body;
   const ipCliente = req.ip;
