@@ -446,17 +446,62 @@ app.post('/api/borrar_bingos_antiguos', authMiddleware, async (req, res) => {
   }
 });
 // Ruta para borrar logs antiguos simplificada
+// app.post('/api/logs/borrar-antiguos', authMiddleware, async (req, res) => {
+//   try {
+//     // Borrar directamente los 20 registros más antiguos
+//     const result = await db.query(`
+//       DELETE FROM socket_io_historial 
+//       ORDER BY created_at ASC 
+//       LIMIT 100
+//     `);
+
+//     // Verificar cuántos registros fueron borrados
+//     if (result.affectedRows === 0) {
+//       return res.json({ 
+//         message: 'No hay registros para borrar',
+//         registrosBorrados: 0
+//       });
+//     }
+
+//     res.json({
+//       message: `Se borraron ${result.affectedRows} registros antiguos`,
+//       registrosBorrados: result.affectedRows
+//     });
+//   } catch (error) {
+//     console.error('Error al borrar logs:', error);
+//     res.status(500).json({ 
+//       error: 'Error al borrar logs antiguos',
+//       details: error.message 
+//     });
+//   }
+// });
+// Ruta para borrar logs antiguos con parámetro de cantidad
 app.post('/api/logs/borrar-antiguos', authMiddleware, async (req, res) => {
   try {
-    // Borrar directamente los 20 registros más antiguos
-    const result = await db.query(`
-      DELETE FROM socket_io_historial 
-      ORDER BY created_at ASC 
-      LIMIT 20
-    `);
+    const cantidadABorrar = Math.min(parseInt(req.body.cantidad) || 20, 1000); // Máximo 1000 por petición
+    const tamañoLote = 50; // Tamaño de cada lote
+    let totalBorrados = 0;
+    
+    // Borrar en lotes
+    for(let i = 0; i < cantidadABorrar; i += tamañoLote) {
+      const cantidadLote = Math.min(tamañoLote, cantidadABorrar - i);
+      
+      const result = await db.query(`
+        DELETE FROM socket_io_historial 
+        ORDER BY created_at ASC 
+        LIMIT ?
+      `, [cantidadLote]);
 
-    // Verificar cuántos registros fueron borrados
-    if (result.affectedRows === 0) {
+      totalBorrados += result.affectedRows;
+
+      // Si no se borraron registros en este lote, salimos del loop
+      if (result.affectedRows === 0) break;
+      
+      // Pequeña pausa entre lotes para no sobrecargar la BD
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    if (totalBorrados === 0) {
       return res.json({ 
         message: 'No hay registros para borrar',
         registrosBorrados: 0
@@ -464,8 +509,8 @@ app.post('/api/logs/borrar-antiguos', authMiddleware, async (req, res) => {
     }
 
     res.json({
-      message: `Se borraron ${result.affectedRows} registros antiguos`,
-      registrosBorrados: result.affectedRows
+      message: `Se borraron ${totalBorrados} registros antiguos`,
+      registrosBorrados: totalBorrados
     });
   } catch (error) {
     console.error('Error al borrar logs:', error);

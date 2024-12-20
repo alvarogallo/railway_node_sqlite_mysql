@@ -109,28 +109,64 @@
             }
         }
 
-        async function borrarLogsAntiguos() {
-            try {
-                const confirmacion = confirm('¿Estás seguro de que deseas borrar los logs antiguos? Se borrarán los 20 registros más antiguos.');
-                if (!confirmacion) return;
+        // async function borrarLogsAntiguos() {
+        //     try {
+        //         const confirmacion = confirm('¿Estás seguro de que deseas borrar los logs antiguos? Se borrarán los 20 registros más antiguos.');
+        //         if (!confirmacion) return;
 
-                const response = await fetch('/api/logs/borrar-antiguos', {
-                    method: 'POST'
-                });
+        //         const response = await fetch('/api/logs/borrar-antiguos', {
+        //             method: 'POST'
+        //         });
                 
-                if (!response.ok) throw new Error('Error al borrar registros');
+        //         if (!response.ok) throw new Error('Error al borrar registros');
                 
-                const result = await response.json();
-                alert(result.message);
+        //         const result = await response.json();
+        //         alert(result.message);
                 
-                if (result.registrosBorrados > 0) {
-                    updateLogs();
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error al borrar logs antiguos');
-            }
+        //         if (result.registrosBorrados > 0) {
+        //             updateLogs();
+        //         }
+        //     } catch (error) {
+        //         console.error('Error:', error);
+        //         alert('Error al borrar logs antiguos');
+        //     }
+        // }
+
+        async function borrarLogsAntiguos() {
+    try {
+        const cantidad = prompt('¿Cuántos registros deseas borrar? (máximo 1000)', '20');
+        if (!cantidad) return;
+
+        const cantidadNum = parseInt(cantidad);
+        if (isNaN(cantidadNum) || cantidadNum <= 0) {
+            alert('Por favor ingresa un número válido mayor a 0');
+            return;
         }
+
+        const confirmacion = confirm(`¿Estás seguro de que deseas borrar ${cantidadNum} registros antiguos?`);
+        if (!confirmacion) return;
+
+        const response = await fetch('/api/logs/borrar-antiguos', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ cantidad: cantidadNum })
+        });
+        
+        if (!response.ok) throw new Error('Error al borrar registros');
+        
+        const result = await response.json();
+        alert(result.message);
+        
+        if (result.registrosBorrados > 0) {
+            updateLogs();
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al borrar logs antiguos: ' + error.message);
+    }
+}
 
         function logout() {
             window.location.href = '/logout';
