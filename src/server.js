@@ -335,6 +335,42 @@ async function getAllChannels() {
   }
 }
 
+// Ruta para ver el archivo senders.json
+app.get('/api/senders', authMiddleware, async (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Ruta al archivo JSON de enviadores
+    const sendersPath = path.join(__dirname, '../json_from_api_db/senders.json');
+    
+    // Verificar si el archivo existe
+    if (!fs.existsSync(sendersPath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Archivo senders.json no encontrado',
+      });
+    }
+    
+    // Leer el archivo
+    const data = fs.readFileSync(sendersPath, 'utf8');
+    const senders = JSON.parse(data);
+    
+    // Devolver el contenido como JSON
+    res.json({
+      success: true,
+      senders: senders
+    });
+  } catch (error) {
+    console.error('Error al leer senders.json:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al leer el archivo senders.json',
+      details: error.message
+    });
+  }
+});
+
 // Cargar datos iniciales
 loadData();
 

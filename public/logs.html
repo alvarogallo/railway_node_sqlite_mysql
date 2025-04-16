@@ -45,6 +45,9 @@
                     <p class="text-muted mb-0" id="totalLogs">Cargando estadísticas...</p>
                 </div>
                 <div class="col-auto">
+                    <button id="verSendersBtn" class="btn btn-info me-2">
+                        Enviadores (senders.json)
+                    </button>
                     <button id="borrarAntiguosBtn" class="btn btn-warning me-2">
                         Borrar Logs Antiguos
                     </button>
@@ -156,6 +159,61 @@
             alert('Error al borrar los registros específicos');
         }
         }
+
+        // Función para ver senders.json
+async function verSendersJson() {
+  try {
+    const response = await fetch('/api/senders');
+    
+    if (!response.ok) {
+      throw new Error('Error al obtener el archivo senders.json');
+    }
+    
+    const data = await response.json();
+    
+    // Crear un modal para mostrar el contenido
+    const modalHtml = `
+      <div class="modal fade" id="sendersModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Archivo senders.json</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <pre class="bg-light p-3" style="max-height: 400px; overflow-y: auto;">${JSON.stringify(data.senders, null, 2)}</pre>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Añadir el modal al body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Mostrar el modal
+    const modalElement = document.getElementById('sendersModal');
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+    
+    // Eliminar el modal cuando se cierre
+    modalElement.addEventListener('hidden.bs.modal', () => {
+      modalElement.remove();
+    });
+    
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error al obtener el archivo senders.json: ' + error.message);
+  }
+}
+
+// Añadir el event listener al botón
+document.getElementById('verSendersBtn').addEventListener('click', verSendersJson);
+
+
         function logout() {
             window.location.href = '/logout';
         }
@@ -168,6 +226,7 @@
         // Cargar datos iniciales
         document.addEventListener('DOMContentLoaded', updateLogs);
         
+
 
         // Actualización automática cada 30 segundos
         setInterval(updateLogs, 30000);
