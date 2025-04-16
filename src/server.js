@@ -644,61 +644,29 @@ app.post('/api/logs/borrar-antiguos', authMiddleware, async (req, res) => {
 
 app.post('/enviar-mensaje', async (req, res) => {
   const { canal, token, evento, mensaje } = req.body;
-  // No usaremos ipCliente por ahora
+  const ipCliente = req.ip;
   
   try {
-    // Simplificar la consulta para ignorar la validación de IP
     const [result] = await db.query(`
       SELECT t.id 
       FROM socket_io_tokens t 
       JOIN socket_io_canales c ON t.id_canal = c.id 
+      LEFT JOIN socket_io_ips_validas iv ON t.id_canal = iv.id_canal 
       WHERE c.nombre = ? AND t.token = ? AND t.permisos = 'emisor'
-    `, [canal, token]);
+      AND (iv.ip IS NULL OR iv.ip = ? OR iv.ip = '0.0.0.0')
+    `, [canal, token, ipCliente]);
 
     if (!result) {
-      return res.status(401).json({ 
-        error: 'Canal o token inválidos', 
-        mensaje: 'No se encontró una combinación válida de canal y token'
-      });
+      return res.status(400).json({ error: 'invalid_sender', mensaje: 'Emisor no válido' });
     }
 
-    // Si llegamos aquí, significa que el canal y token son válidos
     io.to(canal).emit(evento, mensaje);
     await addLog(canal, evento, mensaje);
     res.json({ mensaje: 'Evento enviado correctamente' });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Error interno del servidor', 
-      mensaje: error.message
-    });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
-
-// app.post('/enviar-mensaje', async (req, res) => {
-//   const { canal, token, evento, mensaje } = req.body;
-//   const ipCliente = req.ip;
-  
-//   try {
-//     const [result] = await db.query(`
-//       SELECT t.id 
-//       FROM socket_io_tokens t 
-//       JOIN socket_io_canales c ON t.id_canal = c.id 
-//       LEFT JOIN socket_io_ips_validas iv ON t.id_canal = iv.id_canal 
-//       WHERE c.nombre = ? AND t.token = ? AND t.permisos = 'emisor'
-//       AND (iv.ip IS NULL OR iv.ip = ? OR iv.ip = '0.0.0.0')
-//     `, [canal, token, ipCliente]);
-
-//     if (!result) {
-//       return res.status(400).json({ error: 'invalid_sender', mensaje: 'Emisor no válido' });
-//     }
-
-//     io.to(canal).emit(evento, mensaje);
-//     await addLog(canal, evento, mensaje);
-//     res.json({ mensaje: 'Evento enviado correctamente' });
-//   } catch (error) {
-//     res.status(500).json({ error: 'Error interno del servidor' });
-//   }
-// });
 
 io.on('connection', (socket) => {
   console.log('Cliente conectado:', socket.id);
@@ -876,7 +844,7 @@ app.get('/api/verificar-enviador', authMiddleware, async (req, res) => {
   }
 });
 // Ruta simple de diagnóstico para verificar enviadores
-//Funciona pero no tiene restricciones
+//Funciona pero no tiene restr
 // app.get('/api/test-enviador', async (req, res) => {
 //   try {
 //     const { canal, token } = req.query;
