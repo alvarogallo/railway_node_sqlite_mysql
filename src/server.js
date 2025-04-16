@@ -844,49 +844,50 @@ app.get('/api/verificar-enviador', authMiddleware, async (req, res) => {
   }
 });
 // Ruta simple de diagnóstico para verificar enviadores
-app.get('/api/test-enviador', async (req, res) => {
-  try {
-    const { canal, token } = req.query;
+//Funciona pero no tiene restricciones 
+// app.get('/api/test-enviador', async (req, res) => {
+//   try {
+//     const { canal, token } = req.query;
     
-    // Información básica
-    const respuesta = {
-      mensaje: "Ruta de diagnóstico funcionando correctamente",
-      parametrosRecibidos: {
-        canal,
-        token,
-        ip: req.ip
-      },
-      hora: new Date().toISOString()
-    };
+//     // Información básica
+//     const respuesta = {
+//       mensaje: "Ruta de diagnóstico funcionando correctamente",
+//       parametrosRecibidos: {
+//         canal,
+//         token,
+//         ip: req.ip
+//       },
+//       hora: new Date().toISOString()
+//     };
     
-    // Intenta leer el archivo senders.json
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const sendersPath = path.join(__dirname, '../json_from_api_db/senders.json');
+//     // Intenta leer el archivo senders.json
+//     try {
+//       const fs = require('fs');
+//       const path = require('path');
+//       const sendersPath = path.join(__dirname, '../json_from_api_db/senders.json');
       
-      respuesta.archivoInfo = {
-        ruta: sendersPath,
-        existe: fs.existsSync(sendersPath)
-      };
+//       respuesta.archivoInfo = {
+//         ruta: sendersPath,
+//         existe: fs.existsSync(sendersPath)
+//       };
       
-      if (respuesta.archivoInfo.existe) {
-        const contenido = fs.readFileSync(sendersPath, 'utf8');
-        respuesta.enviadores = JSON.parse(contenido);
-      }
-    } catch (fileError) {
-      respuesta.errorArchivo = fileError.message;
-    }
+//       if (respuesta.archivoInfo.existe) {
+//         const contenido = fs.readFileSync(sendersPath, 'utf8');
+//         respuesta.enviadores = JSON.parse(contenido);
+//       }
+//     } catch (fileError) {
+//       respuesta.errorArchivo = fileError.message;
+//     }
     
-    res.json(respuesta);
-  } catch (error) {
-    console.error('Error en test:', error);
-    res.status(500).json({
-      error: 'Error en prueba de diagnóstico',
-      details: error.message
-    });
-  }
-});
+//     res.json(respuesta);
+//   } catch (error) {
+//     console.error('Error en test:', error);
+//     res.status(500).json({
+//       error: 'Error en prueba de diagnóstico',
+//       details: error.message
+//     });
+//   }
+// });
 
 // server.listen(PORT, () => {
 //   console.log(`Servidor corriendo en el puerto ${PORT}`);
