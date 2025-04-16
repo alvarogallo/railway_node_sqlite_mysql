@@ -695,7 +695,66 @@ io.on('connection', (socket) => {
     await addLog('system', 'disconnect', { socketId: socket.id });
   });
 });
-
+// Ruta de diagnóstico para verificar enviadores
+app.get('/api/verificar-enviador', authMiddleware, async (req, res) => {
+  try {
+    const { canal, token, ip } = req.query;
+    
+    if (!canal || !token) {
+      return res.status(400).json({
+        error: 'Se requieren canal y token para la verificación'
+      });
+    }
+    
+    const ipToCheck = ip || req.ip;
+    
+    // Verificar en base de datos
+    const dbResult = await db.query(`
+      SELECT t.id, c.nombre as canal, t.token
+      FROM socket_io_tokens t 
+      JOIN socket_io_canales c ON t.id_canal = c.id 
+      LEFT JOIN socket_io_ips_validas iv ON t.id_canal = iv.id_canal 
+      WHERE c.nombre = ? AND t.token = ? AND t.permisos = 'emisor'
+      AND (iv.ip IS NULL OR iv.ip = ? OR iv.ip = '0.0.0.0')
+    `, [canal, token, ipToCheck]);
+    
+    // Verificar en senders.json
+    const validarEnviador = require('./validar_enviador');
+    const [error, mensaje] = validarEnviador(canal, token, ipToCheck);
+    
+    // Leer senders.json directamente
+    const fs = require('fs');
+    const path = require('path');
+    const sendersPath = path.join(__dirname, '../json_from_api_db/senders.json');
+    const sendersData = fs.readFileSync(sendersPath, 'utf8');
+    const senders = JSON.parse(sendersData);
+    
+    res.json({
+      dbValidation: {
+        isValid: dbResult.length > 0,
+        result: dbResult
+      },
+      jsonValidation: {
+        isValid: error === null,
+        error,
+        mensaje
+      },
+      senders: senders,
+      requestInfo: {
+        canal,
+        token,
+        ipRequested: ip,
+        ipActual: req.ip
+      }
+    });
+  } catch (error) {
+    console.error('Error de verificación:', error);
+    res.status(500).json({
+      error: 'Error al verificar enviador',
+      details: error.message
+    });
+  }
+});
 // server.listen(PORT, () => {
 //   console.log(`Servidor corriendo en el puerto ${PORT}`);
 // });
