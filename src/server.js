@@ -642,6 +642,38 @@ app.post('/api/logs/borrar-antiguos', authMiddleware, async (req, res) => {
 
 //=====================aca termina adiciones del 2024
 
+app.post('/enviar-mensaje', async (req, res) => {
+  const { canal, token, evento, mensaje } = req.body;
+  // No usaremos ipCliente por ahora
+  
+  try {
+    // Simplificar la consulta para ignorar la validación de IP
+    const [result] = await db.query(`
+      SELECT t.id 
+      FROM socket_io_tokens t 
+      JOIN socket_io_canales c ON t.id_canal = c.id 
+      WHERE c.nombre = ? AND t.token = ? AND t.permisos = 'emisor'
+    `, [canal, token]);
+
+    if (!result) {
+      return res.status(401).json({ 
+        error: 'Canal o token inválidos', 
+        mensaje: 'No se encontró una combinación válida de canal y token'
+      });
+    }
+
+    // Si llegamos aquí, significa que el canal y token son válidos
+    io.to(canal).emit(evento, mensaje);
+    await addLog(canal, evento, mensaje);
+    res.json({ mensaje: 'Evento enviado correctamente' });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Error interno del servidor', 
+      mensaje: error.message
+    });
+  }
+});
+
 // app.post('/enviar-mensaje', async (req, res) => {
 //   const { canal, token, evento, mensaje } = req.body;
 //   const ipCliente = req.ip;
@@ -667,99 +699,7 @@ app.post('/api/logs/borrar-antiguos', authMiddleware, async (req, res) => {
 //     res.status(500).json({ error: 'Error interno del servidor' });
 //   }
 // });
-// Modificar la función en server.js
-app.post('/enviar-mensaje', async (req, res) => {
-  const { canal, token, evento, mensaje } = req.body;
-  const ipCliente = req.ip;
-  
-  console.log('Solicitud recibida en /enviar-mensaje:');
-  console.log('Canal:', canal);
-  console.log('Token:', token);
-  console.log('IP Cliente:', ipCliente);
-  
-  try {
-    // Verificar directamente en senders.json primero para diagnóstico
-    const fs = require('fs');
-    const path = require('path');
-    const sendersPath = path.join(__dirname, '../json_from_api_db/senders.json');
-    
-    if (fs.existsSync(sendersPath)) {
-      console.log('Archivo senders.json encontrado');
-      const data = fs.readFileSync(sendersPath, 'utf8');
-      const enviadores = JSON.parse(data);
-      
-      // Buscar enviador exacto
-      const enviador = enviadores.find(e => e.canal === canal && e.token === token);
-      
-      if (enviador) {
-        console.log('Enviador encontrado en senders.json:', enviador);
-        
-        // Normalizar IPs para comparación
-        const ipClienteNormalizada = ipCliente.replace('::ffff:', '');
-        const ipEnviadorNormalizada = enviador.ip;
-        
-        console.log('IP Cliente normalizada:', ipClienteNormalizada);
-        console.log('IP Enviador:', ipEnviadorNormalizada);
-        
-        // Si la IP del enviador es 0.0.0.0 o coincide con la del cliente
-        if (ipEnviadorNormalizada === '0.0.0.0' || ipClienteNormalizada === ipEnviadorNormalizada) {
-          console.log('Validación de IP exitosa');
-          
-          // Emitir el evento y registrar
-          io.to(canal).emit(evento, mensaje);
-          await addLog(canal, evento, mensaje);
-          
-          console.log('Evento enviado correctamente');
-          return res.json({ mensaje: 'Evento enviado correctamente' });
-        } else {
-          console.log('Validación de IP fallida');
-          return res.status(401).json({ 
-            error: 'IP no autorizada', 
-            mensaje: `IP cliente (${ipClienteNormalizada}) no coincide con IP autorizada (${ipEnviadorNormalizada})`
-          });
-        }
-      } else {
-        console.log('Enviador no encontrado en senders.json');
-        console.log('Canales disponibles:', enviadores.map(e => e.canal).join(', '));
-      }
-    } else {
-      console.log('Archivo senders.json no encontrado');
-    }
-    
-    // Si la validación con senders.json no fue exitosa, intentar con base de datos
-    console.log('Intentando validación con base de datos...');
-    
-    const [result] = await db.query(`
-      SELECT t.id 
-      FROM socket_io_tokens t 
-      JOIN socket_io_canales c ON t.id_canal = c.id 
-      LEFT JOIN socket_io_ips_validas iv ON t.id_canal = iv.id_canal 
-      WHERE c.nombre = ? AND t.token = ? AND t.permisos = 'emisor'
-      AND (iv.ip IS NULL OR iv.ip = ? OR iv.ip = '0.0.0.0')
-    `, [canal, token, ipCliente.replace('::ffff:', '')]);
 
-    if (!result) {
-      console.log('Validación en base de datos fallida');
-      return res.status(401).json({ 
-        error: 'Invalid canal, token, or IP for sender', 
-        mensaje: 'No se encontró una combinación válida de canal, token e IP'
-      });
-    }
-
-    console.log('Validación en base de datos exitosa');
-    io.to(canal).emit(evento, mensaje);
-    await addLog(canal, evento, mensaje);
-    
-    console.log('Evento enviado correctamente');
-    res.json({ mensaje: 'Evento enviado correctamente' });
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ 
-      error: 'Error interno del servidor', 
-      mensaje: error.message
-    });
-  }
-});
 io.on('connection', (socket) => {
   console.log('Cliente conectado:', socket.id);
   const subscribedChannels = new Set();
@@ -936,7 +876,7 @@ app.get('/api/verificar-enviador', authMiddleware, async (req, res) => {
   }
 });
 // Ruta simple de diagnóstico para verificar enviadores
-//Funciona pero no tiene restricciones 
+//Funciona pero no tiene restricciones
 // app.get('/api/test-enviador', async (req, res) => {
 //   try {
 //     const { canal, token } = req.query;
