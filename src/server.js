@@ -277,6 +277,44 @@ function updateActiveChannel(canal, socketId, isJoining = true) {
   }
 }
 
+// En server.js, después de otras rutas API
+app.post('/api/logs/borrar-registros-minutos3', authMiddleware, async (req, res) => {
+  try {
+    console.log('Iniciando borrado de registros con {"minutos":3} que no sean de hoy');
+
+    const result = await db.query(`
+      DELETE FROM socket_io_historial 
+      WHERE DATE(created_at) < CURRENT_DATE() 
+      AND mensaje = ?
+    `, ['{"minutos":3}']);
+
+    // Verificar cuántos registros fueron borrados
+    if (result.affectedRows === 0) {
+      console.log('No se encontraron registros que cumplan con los criterios');
+      return res.json({ 
+        success: true,
+        message: 'No hay registros que cumplan con estos criterios para borrar',
+        registrosBorrados: 0
+      });
+    }
+
+    console.log(`Se borraron ${result.affectedRows} registros específicos`);
+    
+    res.json({
+      success: true,
+      message: `Se borraron ${result.affectedRows} registros específicos`,
+      registrosBorrados: result.affectedRows
+    });
+  } catch (error) {
+    console.error('Error al borrar registros específicos:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Error al borrar registros específicos',
+      details: error.message 
+    });
+  }
+});
+
 async function getAllChannels() {
   try {
     const channels = await db.query('SELECT nombre FROM socket_io_canales');
