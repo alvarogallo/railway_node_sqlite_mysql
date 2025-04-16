@@ -284,15 +284,11 @@ app.post('/api/logs/borrar-registros-minutos3', authMiddleware, async (req, res)
   try {
     console.log('Iniciando borrado de registros con {"minutos":3} que no sean de hoy');
 
-    // const result = await db.query(`
-    //   DELETE FROM socket_io_historial 
-    //   WHERE DATE(created_at) < CURRENT_DATE() 
-    //   AND mensaje = ?
-    // `, ['{"minutos":3}']);
     const result = await db.query(`
       DELETE FROM socket_io_historial 
-      WHERE DATE(created_at) < CURRENT_DATE() 
-      AND id_evento=140`);
+      WHERE  mensaje = ?
+    `, ['{"minutos":3}']);
+
 
 
     // Verificar cuántos registros fueron borrados
