@@ -286,8 +286,7 @@ app.post('/api/logs/borrar-registros-minutos3', authMiddleware, async (req, res)
 
     const result = await db.query(`
       DELETE FROM socket_io_historial 
-      WHERE  mensaje = ?
-    `, ['{"minutos":3}']);
+      WHERE (created_at) < CURRENT_DATE()       `);
 
 
 
