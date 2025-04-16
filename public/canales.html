@@ -50,6 +50,9 @@
                             <a class="nav-link" href="/logs">Ver Logs</a>
                         </li>
                     </ul>
+                    <button id="actualizarSendersBtn" class="btn btn-success me-2">
+                        Actualizar senders.json
+                    </button>                    
                     <button onclick="logout()" class="btn btn-outline-danger">
                         Cerrar Sesión
                     </button>
@@ -264,30 +267,59 @@ async function agregarIp(canal) {
     }
 }
 
-async function eliminarIp(canal, ip) {
-    try {
-        if (!confirm(`¿Está seguro de eliminar la IP ${ip}?`)) {
-            return;
+        async function eliminarIp(canal, ip) {
+            try {
+                if (!confirm(`¿Está seguro de eliminar la IP ${ip}?`)) {
+                    return;
+                }
+
+                const response = await fetch(`/api/canales/${encodeURIComponent(canal)}/ips/${encodeURIComponent(ip)}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Error al eliminar IP');
+                }
+
+                await cargarIpsCanal(canal);
+            } catch (error) {
+                alert(error.message);
+            }
         }
 
-        const response = await fetch(`/api/canales/${encodeURIComponent(canal)}/ips/${encodeURIComponent(ip)}`, {
-            method: 'DELETE'
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Error al eliminar IP');
+        // Función para actualizar senders.json
+        async function actualizarSendersManual() {
+        try {
+            const confirmacion = confirm('¿Estás seguro de que deseas actualizar el archivo senders.json desde la base de datos?');
+            if (!confirmacion) return;
+            
+            const response = await fetch('/api/actualizar-senders', {
+            method: 'POST'
+            });
+            
+            if (!response.ok) throw new Error('Error en la petición');
+            
+            const result = await response.json();
+            alert(result.message);
+            
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error al actualizar senders.json: ' + error.message);
         }
-
-        await cargarIpsCanal(canal);
-    } catch (error) {
-        alert(error.message);
-    }
-}
-
+        }
+                
         function logout() {
             window.location.href = '/logout';
         }
+
+        // Asegurarse de que se agrega el event listener cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', function() {
+        const actualizarSendersBtn = document.getElementById('actualizarSendersBtn');
+        if (actualizarSendersBtn) {
+            actualizarSendersBtn.addEventListener('click', actualizarSendersManual);
+        }
+        });
 
         // Event Listeners
         document.getElementById('refreshBtn').addEventListener('click', cargarCanales);

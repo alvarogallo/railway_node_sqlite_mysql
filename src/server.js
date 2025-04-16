@@ -335,6 +335,33 @@ async function getAllChannels() {
   }
 }
 
+
+// Ruta para actualizar manualmente el archivo senders.json
+app.post('/api/actualizar-senders', authMiddleware, async (req, res) => {
+  try {
+    const resultado = await actualizarSendersJson();
+    
+    if (resultado) {
+      res.json({
+        success: true,
+        message: 'Archivo senders.json actualizado correctamente'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Error al actualizar el archivo senders.json'
+      });
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      details: error.message
+    });
+  }
+});
+
 // Ruta para ver el archivo senders.json
 app.get('/api/senders', authMiddleware, async (req, res) => {
   try {
@@ -370,6 +397,54 @@ app.get('/api/senders', authMiddleware, async (req, res) => {
     });
   }
 });
+
+// Función para actualizar el archivo senders.json desde la base de datos
+async function actualizarSendersJson() {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Ruta al archivo JSON de enviadores
+    const sendersPath = path.join(__dirname, '../json_from_api_db/senders.json');
+    
+    console.log('Actualizando senders.json desde la base de datos...');
+    
+    // Obtener los emisores desde la base de datos
+    const sendersResult = await db.query(`
+      SELECT c.nombre as canal, t.token, iv.ip 
+      FROM socket_io_tokens t 
+      JOIN socket_io_canales c ON t.id_canal = c.id 
+      LEFT JOIN socket_io_ips_validas iv ON iv.id_canal = c.id 
+      WHERE t.permisos = 'emisor'
+    `);
+    
+    // Procesar los datos para el formato correcto
+    // Agrupar por canal y token para evitar duplicados
+    const senderMap = new Map();
+    for (const sender of sendersResult) {
+      const key = `${sender.canal}-${sender.token}`;
+      if (!senderMap.has(key)) {
+        senderMap.set(key, {
+          canal: sender.canal,
+          token: sender.token,
+          ip: sender.ip || '0.0.0.0' // Si no hay IP específica, usar 0.0.0.0
+        });
+      }
+    }
+    
+    // Convertir el mapa a un array
+    const sendersArray = Array.from(senderMap.values());
+    
+    // Escribir el archivo JSON
+    fs.writeFileSync(sendersPath, JSON.stringify(sendersArray, null, 2), 'utf8');
+    
+    console.log(`✅ Archivo senders.json actualizado con ${sendersArray.length} enviadores`);
+    return true;
+  } catch (error) {
+    console.error('❌ Error al actualizar senders.json:', error);
+    return false;
+  }
+}
 
 // Cargar datos iniciales
 loadData();
@@ -621,6 +696,11 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(PORT, () => {
+// server.listen(PORT, () => {
+//   console.log(`Servidor corriendo en el puerto ${PORT}`);
+// });
+server.listen(PORT, async () => {
+  await loadData();
+  await actualizarSendersJson();
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
