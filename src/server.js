@@ -292,19 +292,11 @@ app.post('/api/logs/borrar-registros-minutos', authMiddleware, async (req, res) 
 
     const result = await db.query(`
       DELETE FROM socket_io_historial 
-      WHERE  mensaje = ?
-    `, ['{"minutos":1}']);
+      WHERE mensaje LIKE ?
+    `, ['{"minutos":%']);
 
-    const result1 = await db.query(`
-      DELETE FROM socket_io_historial 
-      WHERE  mensaje = ?
-    `, ['{"minutos":2}']);
 
-    const result2 = await db.query(`
-      DELETE FROM socket_io_historial 
-      WHERE  mensaje = ?
-    `, ['{"minutos":3}']);
-
+ 
 
     // Verificar cuántos registros fueron borrados
     if (result.affectedRows === 0) {
