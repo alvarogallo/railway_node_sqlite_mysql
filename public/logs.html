@@ -135,12 +135,12 @@
             }
         }
         // Función para borrar registros específicos
-        async function borrarRegistrosMinutos3() {
+        async function borrarRegistrosMinutos() {
         try {
-            const confirmacion = confirm('¿Estás seguro de que deseas borrar todos los registros antiguos con mensaje {"minutos":3}?');
+            const confirmacion = confirm('¿Estás seguro de que deseas borrar todos los registros antiguos con mensaje {"minutos"}?');
             if (!confirmacion) return;
 
-            const response = await fetch('/api/logs/borrar-registros-minutos3', {
+            const response = await fetch('/api/logs/borrar-registros-minutos', {
             method: 'POST'
             });
             
@@ -163,7 +163,7 @@
         // Event Listeners
         document.getElementById('borrarAntiguosBtn').addEventListener('click', borrarLogsAntiguos);
         document.getElementById('refreshBtn').addEventListener('click', updateLogs);
-        document.getElementById('borrarMinutos3Btn').addEventListener('click', borrarRegistrosMinutos3);
+        document.getElementById('borrarMinutos3Btn').addEventListener('click', borrarRegistrosMinutos);
 
         // Cargar datos iniciales
         document.addEventListener('DOMContentLoaded', updateLogs);

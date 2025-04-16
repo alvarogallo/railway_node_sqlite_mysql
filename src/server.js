@@ -280,9 +280,9 @@ function updateActiveChannel(canal, socketId, isJoining = true) {
 
 
 // En server.js, después de otras rutas API
-app.post('/api/logs/borrar-registros-minutos3', authMiddleware, async (req, res) => {
+app.post('/api/logs/borrar-registros-minutos', authMiddleware, async (req, res) => {
   try {
-    console.log('Iniciando borrado de registros con {"minutos":3} que no sean de hoy');
+    //console.log('Iniciando borrado de registros con {"minutos":3} que no sean de hoy');
 
     // const result = await db.query(`
     //   DELETE FROM socket_io_historial 
@@ -294,6 +294,16 @@ app.post('/api/logs/borrar-registros-minutos3', authMiddleware, async (req, res)
       DELETE FROM socket_io_historial 
       WHERE  mensaje = ?
     `, ['{"minutos":1}']);
+
+    const result1 = await db.query(`
+      DELETE FROM socket_io_historial 
+      WHERE  mensaje = ?
+    `, ['{"minutos":2}']);
+
+    const result2 = await db.query(`
+      DELETE FROM socket_io_historial 
+      WHERE  mensaje = ?
+    `, ['{"minutos":3}']);
 
 
     // Verificar cuántos registros fueron borrados
