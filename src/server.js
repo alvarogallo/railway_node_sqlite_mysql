@@ -669,7 +669,7 @@ app.post('/enviar-mensaje', async (req, res) => {
 });
 
 io.on('connection', (socket) => {
-  console.log('Cliente conectado:', socket.id);
+  console.log('Cliente conectado 1:', socket.id);
   const subscribedChannels = new Set();
 
   socket.on('unirseCanal', async (data) => {
