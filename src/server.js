@@ -662,7 +662,8 @@ app.post('/enviar-mensaje', async (req, res) => {
 
     io.to(canal).emit(evento, mensaje);
     await addLog(canal, evento, mensaje);
-    res.json({ mensaje: 'Evento enviado correctamente' });
+    //res.json({ mensaje: 'Evento enviado correctamente' });
+    res.json({ mensaje: 'Evento enviado correctamente, evento: ' + evento });
   } catch (error) {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
