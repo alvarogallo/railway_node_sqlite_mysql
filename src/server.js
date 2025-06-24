@@ -229,6 +229,38 @@ async function validarListener(canal, token) {
   }
 }
 
+// async function addLog(canal, evento, mensaje) {
+//   try {
+//     // Obtener o crear el canal
+//     let [canalResult] = await db.query('SELECT id FROM socket_io_canales WHERE nombre = ?', [canal]);
+//     let canalId;
+    
+//     if (!canalResult) {
+//       await db.query('INSERT INTO socket_io_canales (nombre) VALUES (?)', [canal]);
+//       [canalResult] = await db.query('SELECT id FROM socket_io_canales WHERE nombre = ?', [canal]);
+//     }
+//     canalId = canalResult.id;
+
+//     // Obtener o crear el evento
+//     let [eventoResult] = await db.query('SELECT id FROM socket_io_eventos WHERE evento = ? AND id_canal = ?', [evento, canalId]);
+//     let eventoId;
+    
+//     if (!eventoResult) {
+//       await db.query('INSERT INTO socket_io_eventos (id_canal, evento) VALUES (?, ?)', [canalId, evento]);
+//       [eventoResult] = await db.query('SELECT id FROM socket_io_eventos WHERE evento = ? AND id_canal = ?', [evento, canalId]);
+//     }
+//     eventoId = eventoResult.id;
+
+//     // Registrar en historial
+//     await db.query(
+//       'INSERT INTO socket_io_historial (id_canal, id_evento, ip, mensaje) VALUES (?, ?, ?, ?)',
+//       [canalId, eventoId, '0.0.0.0', JSON.stringify(mensaje)]
+//     );
+//   } catch (error) {
+//     console.error('Error al agregar log:', error);
+//   }
+// }
+
 async function addLog(canal, evento, mensaje) {
   try {
     // Obtener o crear el canal
@@ -256,10 +288,35 @@ async function addLog(canal, evento, mensaje) {
       'INSERT INTO socket_io_historial (id_canal, id_evento, ip, mensaje) VALUES (?, ?, ?, ?)',
       [canalId, eventoId, '0.0.0.0', JSON.stringify(mensaje)]
     );
+
+    // === NUEVA FUNCIONALIDAD: Limpieza automática ===
+    // Cada 100 inserciones, limpia registros antiguos
+    const shouldClean = Math.random() < 0.01; // 1% de probabilidad por llamada
+    if (shouldClean) {
+      await cleanOldLogs();
+    }
   } catch (error) {
     console.error('Error al agregar log:', error);
   }
 }
+
+// Función para limpiar logs antiguos (más de 7 días)
+async function cleanOldLogs() {
+  try {
+    const result = await db.query(`
+      DELETE FROM socket_io_historial 
+      WHERE created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
+      LIMIT 1000
+    `);
+    
+    if (result.affectedRows > 0) {
+      console.log(`🧹 Limpieza automática: ${result.affectedRows} registros eliminados`);
+    }
+  } catch (error) {
+    console.error('Error en limpieza automática:', error);
+  }
+}
+
 
 function updateActiveChannel(canal, socketId, isJoining = true) {
   if (isJoining) {
